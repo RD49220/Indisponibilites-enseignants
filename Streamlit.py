@@ -123,45 +123,43 @@ commentaire = st.text_area(
 # ======================
 # ENREGISTREMENT
 # ======================
-if st.button("💾 Enregistrer"):
-    if not selections:
-        st.warning("Aucun créneau sélectionné.")
-        st.stop()
+rows_to_delete = [
+    i for i, row in enumerate(all_data[1:], start=2)
+    if row[0] == user_code
+]
 
-    all_data = sheet.get_all_values()
-
-    rows_to_delete = [
-        i for i, row in enumerate(all_data[1:], start=2)
-        if row[0] == user_code
-    ]
-
-    if rows_to_delete:
-        st.warning(
-            "⚠️ Vous avez déjà enregistré des indisponibilités.\n"
-            "Cochez pour écraser les anciennes données."
-        )
-
-        confirm = st.checkbox("Je confirme l’écrasement")
-
-        if not confirm:
-            st.stop()
-
-        # 🔥 suppression du bas vers le haut
+# --- si l'utilisateur a déjà des lignes, proposer bouton "Écraser et enregistrer"
+if rows_to_delete:
+    st.warning(
+        "⚠️ Vous avez déjà enregistré des indisponibilités."
+    )
+    if st.button("Écraser et enregistrer"):
+        # suppression du bas vers le haut
         for row_index in sorted(rows_to_delete, reverse=True):
             sheet.delete_rows(row_index)
 
-    # 🔄 relire après suppression
-    all_data = sheet.get_all_values()
+        # ajout nouvelles lignes
+        for row in selections:
+            sheet.append_row([
+                row[0],        # Code enseignant
+                row[1],        # Jour
+                row[2],        # Créneau
+                row[3],        # Code créneau
+                commentaire,   # Commentaire
+                row[5]         # Timestamp
+            ])
+        st.success("✅ Indisponibilités mises à jour avec succès")
 
-    # ajouter nouvelles lignes
-    for row in selections:
-        sheet.append_row([
-            row[0],        # Code enseignant
-            row[1],        # Jour
-            row[2],        # Créneau
-            row[3],        # Code créneau
-            commentaire,   # Commentaire
-            row[5]         # Timestamp
-        ])
-
-    st.success("✅ Indisponibilités mises à jour avec succès")
+# --- sinon bouton normal d'enregistrement
+else:
+    if st.button("💾 Enregistrer"):
+        for row in selections:
+            sheet.append_row([
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                commentaire,
+                row[5]
+            ])
+        st.success("✅ Indisponibilités enregistrées avec succès")
