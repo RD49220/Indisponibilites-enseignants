@@ -75,39 +75,4 @@ user_code = user_selection.split(" ")[0]
 
 st.divider()
 
-selections = []
-
-for jour in JOURS:
-    st.subheader(jour)
-    cols = st.columns(3)
-    for i, creneau in enumerate(CRENEAUX):
-        if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
-            selections.append([
-                user_code,
-                jour,
-                creneau,
-                datetime.now().isoformat()
-            ])
-
-st.divider()
-
-# Champ commentaire juste avant le bouton
-commentaire = st.text_area("💬 Commentaire libre (optionnel)")
-
-st.divider()
-
-# ==============================
-# ENREGISTREMENT
-# ==============================
-
-if st.button("💾 Enregistrer"):
-    if not user_code:
-        st.error("Merci de sélectionner votre nom / initiales.")
-    elif not selections:
-        st.warning("Aucun créneau sélectionné.")
-    else:
-        # Ajouter le commentaire à chaque ligne
-        for row in selections:
-            row.append(commentaire)
-            sheet.append_row(row)
-        st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
+sel
