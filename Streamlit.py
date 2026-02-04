@@ -77,6 +77,24 @@ user_code = user_selection.split(" ")[0]
 st.divider()
 
 # ==============================
+# 🔹 PRÉ-COCHAGE DES ANCIENNES DONNÉES
+# ==============================
+
+# Réinitialiser les cases si on change d'utilisateur
+if "current_user" not in st.session_state or st.session_state.current_user != user_code:
+    st.session_state.clear()
+    st.session_state.current_user = user_code
+
+    all_data = sheet.get_all_values()
+
+    for row in all_data[1:]:
+        if row[0] == user_code:
+            jour = row[1]
+            creneau = row[2]
+            key = f"{jour}_{creneau}"
+            st.session_state[key] = True
+
+# ==============================
 # CHECKBOXES
 # ==============================
 
@@ -123,7 +141,6 @@ if st.button("💾 Enregistrer"):
             "Timestamp"
         ])
 
-    # Vérifier anciennes lignes utilisateur
     all_data = sheet.get_all_values()
     existing_rows = [
         i for i, row in enumerate(all_data[1:], start=2)
@@ -132,25 +149,19 @@ if st.button("💾 Enregistrer"):
 
     if existing_rows:
         st.warning(
-            f"⚠️ Vous avez déjà enregistré vos indisponibilités "
-            f"({len(existing_rows)} lignes existantes).\n\n"
-            "Enregistrer à nouveau **écrasera les données précédentes**."
+            "⚠️ Vous avez déjà enregistré des indisponibilités.\n"
+            "Confirmez pour écraser les anciennes données."
         )
 
-        confirmer = st.checkbox(
-            "Je confirme vouloir écraser mes anciennes indisponibilités"
-        )
+        confirmer = st.checkbox("Je confirme l’écrasement")
 
         if not confirmer:
             st.stop()
 
-        # Suppression des anciennes lignes
         for r in reversed(existing_rows):
             sheet.delete_rows(r)
 
-    # Ajout des nouvelles lignes
     for row in selections:
-        row_finale = row[:4] + [commentaire] + [row[4]]
-        sheet.append_row(row_finale)
+        sheet.append_row(row[:4] + [commentaire] + [row[4]])
 
-    st.success("✅ Vos indisponibilités ont été enregistrées avec succès.")
+    st.success("✅ Indisponibilités enregistrées avec succès")
