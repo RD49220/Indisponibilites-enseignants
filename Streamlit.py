@@ -22,8 +22,9 @@ CRENEAUX = {
     "1": "8h-9h30",
     "2": "9h30-11h",
     "3": "11h-12h30",
-    "4": "13h30-15h",
-    "5": "15h-16h30"
+    "5": "14h-15h30",
+    "6": "15h30-17h",
+    "7": "17h-18h30"
 }
 
 # ======================
@@ -99,14 +100,15 @@ with st.form(key=f"form_{user_code}"):
 
     for jour, jour_code in JOURS.items():
         st.subheader(jour)
-        for num, label in CRENEAUX.items():
+        cols = st.columns(3)
+        for i, (num, label) in enumerate(CRENEAUX.items()):
             code_creneau = f"{jour_code}_{num}"
             code_cr_streamlit = f"{user_code}_{code_creneau}"  # nouvelle colonne
             key = f"{user_code}_{jour_code}_{num}"  # clé dynamique par utilisateur
 
             checked = code_creneau in existing_codes
 
-            if st.checkbox(label, value=checked, key=key):
+            if cols[i % 3].checkbox(label, value=checked, key=key):
                 selections.append([
                     user_code,
                     jour,
