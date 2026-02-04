@@ -75,8 +75,8 @@ user_rows = [row for row in all_data[1:] if row[0] == user_code]
 
 existing_codes = set()
 for row in user_rows:
-    if len(row) > 3:
-        existing_codes.add(row[3].strip())
+    if len(row) > 4:
+        existing_codes.add(row[4].strip())  # code_creneau ou code_cr_streamlit
 existing_comment = user_rows[0][5] if user_rows and len(user_rows[0]) > 5 else ""
 rows_to_delete = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
 
@@ -101,7 +101,7 @@ with st.form(key=f"form_{user_code}"):
         cols = st.columns(3)
         for i, (num, label) in enumerate(CRENEAUX.items()):
             code_creneau = f"{jour_code}_{num}"
-            code_cr_streamlit = f"{user_code}_{code_creneau}"  # nouvelle colonne
+            code_cr_streamlit = f"{user_code}_{code_creneau}"
             key = f"{user_code}_{jour_code}_{num}"
 
             checked = code_creneau in existing_codes
@@ -113,7 +113,7 @@ with st.form(key=f"form_{user_code}"):
                     "",            # Semaine vide pour régulier
                     label,
                     code_creneau,
-                    commentaire,   # commentaire
+                    "",            # commentaire sera ajouté plus bas
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     code_cr_streamlit
                 ])
@@ -122,7 +122,6 @@ with st.form(key=f"form_{user_code}"):
     # CRENEAUX PONCTUELS MULTI-SÉLECTION
     # ======================
     st.subheader("📌 Créneaux ponctuels")
-
     semaines = st.multiselect("Numéros de semaine", list(range(1, 53)))
     jours_ponctuels = st.multiselect("Jours", list(JOURS.keys()))
     creneaux_ponctuels = st.multiselect("Créneaux", list(CRENEAUX.values()))
@@ -143,7 +142,9 @@ with st.form(key=f"form_{user_code}"):
                         "Code_cr_streamlit": code_cr_streamlit
                     })
 
-    # Affichage dynamique des créneaux ponctuels ajoutés sans la colonne code_cr_streamlit
+    # ======================
+    # AFFICHAGE TABLEAU PONCTUELS
+    # ======================
     if st.session_state.ponctuels:
         st.subheader("📝 Créneaux ponctuels ajoutés")
         df_display = [{k: v for k, v in row.items() if k != "Code_cr_streamlit"} for row in st.session_state.ponctuels]
@@ -161,6 +162,9 @@ with st.form(key=f"form_{user_code}"):
     if rows_to_delete:
         confirm = st.checkbox("Je confirme l’écrasement des anciennes données")
 
+    # ======================
+    # BOUTON ENREGISTRER
+    # ======================
     submit = st.form_submit_button("💾 Enregistrer / Écraser" if rows_to_delete else "💾 Enregistrer")
 
 # ======================
@@ -175,37 +179,36 @@ if submit:
         st.warning("Vous devez confirmer l’écrasement des anciennes données pour continuer.")
         st.stop()
 
-    # suppression des anciennes lignes si nécessaire
+    # suppression anciennes lignes si nécessaire
     for row_index in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(row_index)
 
-    # ajout des créneaux réguliers
+    # ajout régulier
     for row in selections:
         sheet.append_row([
             row[0],  # Code enseignant
             row[1],  # Jour
-            row[2],  # Semaine (vide pour régulier)
+            row[2],  # Semaine vide
             row[3],  # Créneau
             row[4],  # Code créneau
-            row[5],  # Commentaire
+            commentaire,
             row[6],  # Timestamp
             row[7]   # code_cr_streamlit
         ])
 
-    # ajout des créneaux ponctuels
+    # ajout ponctuel
     for row in st.session_state.ponctuels:
         code_jour, num_creneau = row["Code_cr_streamlit"].split("_")[1:3]
         sheet.append_row([
             user_code,
             row['Jour'],
-            row['Semaine'],             # Numéro de semaine
+            row['Semaine'],               # Numéro semaine
             row['Créneau'],
             f"{code_jour}_{num_creneau}", # Code créneau
-            "",                          # commentaire vide
+            "",                           # commentaire vide
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             row['Code_cr_streamlit']
         ])
 
-    # vider la liste ponctuels après enregistrement
-    st.session_state.ponctuels = []
+    st.session_state.ponctuels = []  # reset ponctuels
     st.success("✅ Indisponibilités et créneaux ponctuels enregistrés avec succès")
