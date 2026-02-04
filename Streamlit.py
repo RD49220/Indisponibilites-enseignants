@@ -24,7 +24,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-NOM_SHEET = "Indisponibilites-enseignants"  # ⚠️ doit être EXACTEMENT le nom du Google Sheet
+NOM_SHEET = "Indisponibilites-enseignants"  # <- ton nom exact de Google Sheet
 
 # ==============================
 # CONNEXION GOOGLE SHEETS
@@ -83,4 +83,3 @@ if st.button("💾 Enregistrer"):
             sheet.append_row(row)
 
         st.success("✅ Vos indisponibilités ont été enregistrées.")
-
