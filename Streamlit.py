@@ -98,6 +98,9 @@ if rows_to_delete:
 with st.form(key=f"form_{user_code}"):
     selections = []
 
+    # ======================
+    # INDISPONIBILITÉS RÉGULIÈRES
+    # ======================
     for jour, jour_code in JOURS.items():
         st.subheader(jour)
         cols = st.columns(3)
@@ -119,6 +122,33 @@ with st.form(key=f"form_{user_code}"):
                     code_cr_streamlit
                 ])
 
+    # ======================
+    # CRENEAUX PONCTUELS
+    # ======================
+    st.subheader("📌 Créneaux ponctuels")
+    semaine = st.selectbox("Numéro de la semaine", list(range(1, 53)))
+    jour_ponctuel = st.selectbox("Jour", list(JOURS.keys()))
+    creneau_ponctuel = st.selectbox("Créneau", list(CRENEAUX.values()))
+
+    if st.button("➕ Ajouter ce créneau ponctuel"):
+        code_jour = JOURS[jour_ponctuel]
+        num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
+        code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"  # _P = ponctuel
+
+        sheet.append_row([
+            user_code,
+            f"{jour_ponctuel} (Semaine {semaine})",
+            creneau_ponctuel,
+            f"{code_jour}_{num_creneau}",
+            "",  # commentaire vide
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            code_cr_streamlit
+        ])
+        st.success("✅ Créneau ponctuel ajouté !")
+
+    # ======================
+    # COMMENTAIRE
+    # ======================
     commentaire = st.text_area(
         "💬 Commentaire",
         value=existing_comment,
