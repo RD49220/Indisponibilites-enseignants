@@ -130,7 +130,10 @@ with st.form(key=f"form_{user_code}"):
     jour_ponctuel = st.selectbox("Jour", list(JOURS.keys()))
     creneau_ponctuel = st.selectbox("Créneau", list(CRENEAUX.values()))
 
-    if st.button("➕ Ajouter ce créneau ponctuel"):
+    # ⚡ Ici on utilise st.form_submit_button au lieu de st.button
+    submit_ponctuel = st.form_submit_button("➕ Ajouter ce créneau ponctuel")
+
+    if submit_ponctuel:
         code_jour = JOURS[jour_ponctuel]
         num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
         code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"  # _P = ponctuel
