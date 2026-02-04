@@ -77,7 +77,7 @@ existing_codes = set()
 for row in user_rows:
     if len(row) > 3:
         existing_codes.add(row[3].strip())
-existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else ""
+existing_comment = user_rows[0][5] if user_rows and len(user_rows[0]) > 5 else ""
 rows_to_delete = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
 
 # ======================
@@ -110,9 +110,10 @@ with st.form(key=f"form_{user_code}"):
                 selections.append([
                     user_code,
                     jour,
+                    "",            # Semaine vide pour régulier
                     label,
                     code_creneau,
-                    "",  # commentaire ajouté plus bas
+                    commentaire,   # commentaire
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     code_cr_streamlit
                 ])
@@ -183,11 +184,12 @@ if submit:
         sheet.append_row([
             row[0],  # Code enseignant
             row[1],  # Jour
-            row[2],  # Créneau
-            row[3],  # Code créneau
-            commentaire,  # Commentaire
-            row[5],  # Timestamp
-            row[6]   # code_cr_streamlit
+            row[2],  # Semaine (vide pour régulier)
+            row[3],  # Créneau
+            row[4],  # Code créneau
+            row[5],  # Commentaire
+            row[6],  # Timestamp
+            row[7]   # code_cr_streamlit
         ])
 
     # ajout des créneaux ponctuels
@@ -195,10 +197,11 @@ if submit:
         code_jour, num_creneau = row["Code_cr_streamlit"].split("_")[1:3]
         sheet.append_row([
             user_code,
-            f"{row['Jour']} (Semaine {row['Semaine']})",
+            row['Jour'],
+            row['Semaine'],             # Numéro de semaine
             row['Créneau'],
-            f"{code_jour}_{num_creneau}",
-            "",  # commentaire vide pour ponctuel
+            f"{code_jour}_{num_creneau}", # Code créneau
+            "",                          # commentaire vide
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             row['Code_cr_streamlit']
         ])
