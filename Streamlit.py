@@ -81,9 +81,13 @@ user_rows = [
     if row[0] == user_code
 ]
 
-# ⚡ Normalisation pour précocher correctement
-existing_codes = {str(row[3]).strip() for row in user_rows}
-existing_comment = user_rows[0][4] if user_rows else ""
+# ⚡ Correction pour précocher correctement
+existing_codes = set()
+for row in user_rows:
+    if len(row) > 3:  # s'assure que la colonne "Code créneau" existe
+        existing_codes.add(row[3].strip())
+
+existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else ""
 
 st.divider()
 
