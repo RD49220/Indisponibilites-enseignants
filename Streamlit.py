@@ -73,6 +73,21 @@ selected_label = st.selectbox(
 user_code = options[selected_label]
 
 # ======================
+# RESET CHECKBOXES SI CHANGEMENT D'UTILISATEUR
+# ======================
+if 'last_user' not in st.session_state:
+    st.session_state['last_user'] = None
+
+if st.session_state['last_user'] != user_code:
+    # reset toutes les checkbox de créneaux
+    for jour_code in JOURS.values():
+        for num in CRENEAUX.keys():
+            key = f"{jour_code}_{num}"
+            if key in st.session_state:
+                del st.session_state[key]
+    st.session_state['last_user'] = user_code
+
+# ======================
 # LECTURE DONNÉES EXISTANTES
 # ======================
 all_data = sheet.get_all_values()
@@ -81,10 +96,9 @@ user_rows = [
     if row[0] == user_code
 ]
 
-# ⚡ Correction pour précocher correctement
 existing_codes = set()
 for row in user_rows:
-    if len(row) > 3:  # s'assure que la colonne "Code créneau" existe
+    if len(row) > 3:
         existing_codes.add(row[3].strip())
 
 existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else ""
