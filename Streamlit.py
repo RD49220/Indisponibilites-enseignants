@@ -118,30 +118,35 @@ with st.form(key=f"form_{user_code}"):
                 ])
 
     # ======================
-    # CRENEAUX PONCTUELS
+    # CRENEAUX PONCTUELS MULTI-SÉLECTION
     # ======================
     st.subheader("📌 Créneaux ponctuels")
-    semaine = st.selectbox("Numéro de la semaine", list(range(1, 53)))
-    jour_ponctuel = st.selectbox("Jour", list(JOURS.keys()))
-    creneau_ponctuel = st.selectbox("Créneau", list(CRENEAUX.values()))
 
-    submit_ponctuel = st.form_submit_button("➕ Ajouter ce créneau ponctuel")
+    semaines = st.multiselect("Numéros de semaine", list(range(1, 53)))
+    jours_ponctuels = st.multiselect("Jours", list(JOURS.keys()))
+    creneaux_ponctuels = st.multiselect("Créneaux", list(CRENEAUX.values()))
+
+    submit_ponctuel = st.form_submit_button("➕ Ajouter ce(s) créneau(x) ponctuel(s)")
     if submit_ponctuel:
-        code_jour = JOURS[jour_ponctuel]
-        num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
-        code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"
+        for semaine in semaines:
+            for jour_ponctuel in jours_ponctuels:
+                for creneau_ponctuel in creneaux_ponctuels:
+                    code_jour = JOURS[jour_ponctuel]
+                    num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
+                    code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"
 
-        st.session_state.ponctuels.append({
-            "Semaine": semaine,
-            "Jour": jour_ponctuel,
-            "Créneau": creneau_ponctuel,
-            "Code_cr_streamlit": code_cr_streamlit
-        })
+                    st.session_state.ponctuels.append({
+                        "Semaine": semaine,
+                        "Jour": jour_ponctuel,
+                        "Créneau": creneau_ponctuel,
+                        "Code_cr_streamlit": code_cr_streamlit
+                    })
 
-    # Affichage dynamique des créneaux ponctuels ajoutés
+    # Affichage dynamique des créneaux ponctuels ajoutés sans la colonne code_cr_streamlit
     if st.session_state.ponctuels:
         st.subheader("📝 Créneaux ponctuels ajoutés")
-        st.table(st.session_state.ponctuels)
+        df_display = [{k: v for k, v in row.items() if k != "Code_cr_streamlit"} for row in st.session_state.ponctuels]
+        st.table(df_display)
 
     # ======================
     # COMMENTAIRE
