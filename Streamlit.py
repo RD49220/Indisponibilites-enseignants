@@ -57,6 +57,11 @@ user = st.text_input("Vos initiales / votre nom")
 
 st.divider()
 
+# 🔹 Nouveau champ commentaire
+commentaire = st.text_area("💬 Commentaire libre (optionnel)")
+
+st.divider()
+
 selections = []
 
 for jour in JOURS:
@@ -68,7 +73,8 @@ for jour in JOURS:
                 user,
                 jour,
                 creneau,
-                datetime.now().isoformat()
+                datetime.now().isoformat(),
+                commentaire  # ajoute le commentaire à chaque ligne
             ])
 
 st.divider()
@@ -85,4 +91,4 @@ if st.button("💾 Enregistrer"):
     else:
         for row in selections:
             sheet.append_row(row)
-        st.success("✅ Vos indisponibilités ont été enregistrées.")
+        st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
