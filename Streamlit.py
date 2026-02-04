@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
@@ -75,16 +74,6 @@ user_code = user_selection.split(" ")[0]
 st.divider()
 
 # ==============================
-# INITIALISATION SESSION_STATE POUR LES CHECKBOXES
-# ==============================
-
-for jour in JOURS:
-    for creneau in CRENEAUX:
-        key = f"{jour}_{creneau}"
-        if key not in st.session_state:
-            st.session_state[key] = False  # False par défaut
-
-# ==============================
 # AFFICHAGE DES CHECKBOXES
 # ==============================
 
@@ -95,17 +84,15 @@ for jour in JOURS:
     cols = st.columns(3)
     for i, creneau in enumerate(CRENEAUX):
         key = f"{jour}_{creneau}"
-        # Liaison avec session_state pour éviter rerun complet
-        if cols[i % 3].checkbox(creneau, value=st.session_state[key], key=key):
-            st.session_state[key] = True
+        # 🔹 On ne modifie pas st.session_state, juste on lit la valeur de la checkbox
+        checked = cols[i % 3].checkbox(creneau, key=key)
+        if checked:
             selections.append([
                 user_code,
                 jour,
                 creneau,
-                datetime.now().isoformat()  # timestamp temporaire
+                datetime.now().isoformat()  # timestamp
             ])
-        else:
-            st.session_state[key] = False
 
 st.divider()
 
@@ -124,7 +111,7 @@ if st.button("💾 Enregistrer"):
     elif not selections:
         st.warning("Aucun créneau sélectionné.")
     else:
-        # Ajouter les en-têtes si le Sheet est vide
+        # 🔹 Ajouter les en-têtes si le Sheet est vide
         try:
             if sheet.row_count == 0 or sheet.get_all_values() == []:
                 sheet.append_row(["Utilisateur", "Jour", "Créneau", "Commentaire", "Timestamp"])
@@ -132,14 +119,9 @@ if st.button("💾 Enregistrer"):
             st.error(f"❌ Impossible d'ajouter les en-têtes : {e}")
             st.stop()
 
-        # Ajouter le commentaire avant le timestamp
+        # 🔹 Ajouter le commentaire avant le timestamp
         for row in selections:
             row = row[:3] + [commentaire] + [row[3]]
             sheet.append_row(row)
 
         st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
-
-        # 🔹 Réinitialiser les checkboxes après enregistrement
-        for jour in JOURS:
-            for creneau in CRENEAUX:
-                st.session_state[f"{jour}_{creneau}"] = False
