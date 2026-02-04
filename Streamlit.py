@@ -1,13 +1,15 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
 
-# ======================
+# ==============================
 # CONFIG
-# ======================
-NOM_SHEET = "Indisponibilites-enseignants"
-ONGLET_DONNEES = "Feuille1"
+# ==============================
+
+NOM_FICHIER = "Indisponibilites-enseignants"
+ONGLET_DATA = "Feuille1"
 ONGLET_USERS = "Utilisateurs"
 
 JOURS = {
@@ -18,127 +20,122 @@ JOURS = {
     "Vendredi": "VEN"
 }
 
-CRENEAUX = {
-    "1": "8h-9h30",
-    "2": "9h30-11h",
-    "3": "11h-12h30",
-    "4": "13h30-15h",
-    "5": "15h-16h30"
-}
+CRENEAUX = [
+    "8h-9h30",
+    "9h30-11h",
+    "11h-12h30",
+    "14h-15h30",
+    "15h30-17h",
+    "17h-18h30"
+]
 
-# ======================
-# AUTH GOOGLE SHEETS
-# ======================
-creds_dict = st.secrets["gcp_service_account"]
+# ==============================
+# AUTH GOOGLE
+# ==============================
 
-scopes = [
+SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-client = gspread.authorize(creds)
-
-sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
-
-# ======================
-# UI
-# ======================
-st.title("📅 Indisponibilités enseignants")
-
-# ======================
-# CHARGER UTILISATEURS
-# ======================
-users_data = users_sheet.get_all_values()[1:]  # skip header
-users = [
-    {
-        "code": row[0],
-        "nom": row[1],
-        "prenom": row[2]
-    }
-    for row in users_data if row
-]
-
-options = {
-    f"{u['code']} – {u['nom']} {u['prenom']}": u["code"]
-    for u in users
-}
-
-selected_label = st.selectbox(
-    "Choisissez votre nom",
-    options.keys()
+credentials = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=SCOPES
 )
 
-user_code = options[selected_label]
+client = gspread.authorize(credentials)
 
-# ======================
-# LECTURE DONNÉES EXISTANTES
-# ======================
-all_data = sheet.get_all_values()
-user_rows = [
-    row for row in all_data[1:]
-    if row[0] == user_code
-]
+sheet = client.open(NOM_FICHIER).worksheet(ONGLET_DATA)
+sheet_users = client.open(NOM_FICHIER).worksheet(ONGLET_USERS)
 
-existing_codes = {row[3] for row in user_rows}
-existing_comment = user_rows[0][4] if user_rows else ""
+# ==============================
+# CHARGEMENT UTILISATEURS
+# ==============================
+
+users_df = pd.DataFrame(sheet_users.get_all_records())
+
+users_df["label"] = (
+    users_df["Code"] + " (" +
+    users_df["Nom"] + " " +
+    users_df["Prenom"] + ")"
+)
+
+user_map = dict(zip(users_df["label"], users_df["Code"]))
+
+# ==============================
+# INTERFACE
+# ==============================
+
+st.set_page_config(page_title="Indisponibilités", layout="centered")
+st.title("📅 Saisie des indisponibilités")
+
+selected_label = st.selectbox(
+    "Enseignant",
+    options=users_df["label"].tolist()
+)
+
+user_code = user_map[selected_label]
 
 st.divider()
 
-# ======================
-# SÉLECTION INDISPONIBILITÉS
-# ======================
-selections = []
+# ==============================
+# DONNÉES EXISTANTES
+# ==============================
+
+existing_rows = sheet.get_all_records()
+existing_df = pd.DataFrame(existing_rows)
+
+existing_user = existing_df[existing_df["Code"] == user_code]
+
+existing_codes = set(existing_user["Code_creneau"]) if not existing_user.empty else set()
+
+# ==============================
+# SAISIE DES CRENEAUX
+# ==============================
+
+selected = []
 
 for jour, jour_code in JOURS.items():
     st.subheader(jour)
-    for num, label in CRENEAUX.items():
-        code_creneau = f"{jour_code}_{num}"
-        key = f"{jour_code}_{num}"
 
-        checked = code_creneau in existing_codes
+    options = []
+    default = []
 
-        if st.checkbox(label, value=checked, key=key):
-            selections.append([
-                user_code,
-                jour,
-                label,
-                code_creneau,
-                "",  # commentaire (ajouté plus bas)
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ])
+    for i, c in enumerate(CRENEAUX, start=1):
+        code = f"{jour_code}_{i}"
+        options.append(c)
+        if code in existing_codes:
+            default.append(c)
+
+    choix = st.multiselect(
+        "Créneaux indisponibles",
+        options,
+        default=default,
+        key=jour
+    )
+
+    for c in choix:
+        idx = CRENEAUX.index(c) + 1
+        selected.append((jour, jour_code, c, idx))
 
 st.divider()
 
-# ======================
-# COMMENTAIRE
-# ======================
-commentaire = st.text_area(
-    "💬 Commentaire",
-    value=existing_comment,
-    height=100
-)
+commentaire = st.text_area("💬 Commentaire (optionnel)")
 
-# ======================
+# ==============================
 # ENREGISTREMENT
-# ======================
+# ==============================
+
 if st.button("💾 Enregistrer"):
-    if not selections:
+    if not selected:
         st.warning("Aucun créneau sélectionné.")
         st.stop()
 
-    all_data = sheet.get_all_values()
-
-    rows_to_delete = [
-        i for i, row in enumerate(all_data[1:], start=2)
-        if row[0] == user_code
-    ]
-
-    if rows_to_delete:
+    # --- confirmation si données existantes ---
+    if not existing_user.empty:
         st.warning(
-            "⚠️ Vous avez déjà enregistré des indisponibilités.\n"
-            "Cochez pour écraser les anciennes données."
+            "⚠️ Vous avez déjà enregistré des indisponibilités.\n\n"
+            "Enregistrer à nouveau **écrasera les données précédentes**."
         )
 
         confirm = st.checkbox("Je confirme l’écrasement")
@@ -146,22 +143,36 @@ if st.button("💾 Enregistrer"):
         if not confirm:
             st.stop()
 
-        # 🔥 suppression du bas vers le haut
-        for row_index in sorted(rows_to_delete, reverse=True):
-            sheet.delete_rows(row_index)
+        # suppression des anciennes lignes (de bas en haut)
+        rows_to_delete = [
+            i + 2
+            for i, r in existing_df.iterrows()
+            if r["Code"] == user_code
+        ]
 
-    # 🔄 relire après suppression
-    all_data = sheet.get_all_values()
+        for r in reversed(rows_to_delete):
+            sheet.delete_rows(r)
 
-    # ajouter nouvelles lignes
-    for row in selections:
-        sheet.append_row([
-            row[0],        # Code enseignant
-            row[1],        # Jour
-            row[2],        # Créneau
-            row[3],        # Code créneau
-            commentaire,   # Commentaire
-            row[5]         # Timestamp
+    # --- ajout nouvelles lignes ---
+    now = datetime.now().isoformat()
+
+    rows = []
+    for jour, jour_code, creneau, idx in selected:
+        rows.append([
+            user_code,
+            jour,
+            creneau,
+            f"{jour_code}_{idx}",
+            commentaire,
+            now
         ])
 
-    st.success("✅ Indisponibilités mises à jour avec succès")
+    # entête si feuille vide
+    if sheet.row_count == 0 or sheet.get_all_values() == []:
+        sheet.append_row(
+            ["Code", "Jour", "Créneau", "Code_creneau", "Commentaire", "Timestamp"]
+        )
+
+    sheet.append_rows(rows)
+
+    st.success("✅ Indisponibilités enregistrées avec succès")
