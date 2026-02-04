@@ -51,31 +51,23 @@ users = [{"code": row[0], "nom": row[1], "prenom": row[2]} for row in users_data
 options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
 # ======================
-# SESSION STATE INITIALIZATION
+# SESSION STATE
 # ======================
 if "user_code" not in st.session_state:
     st.session_state.user_code = None
-if "prev_user" not in st.session_state:
-    st.session_state.prev_user = None
-
-# ======================
-# CALLBACK POUR RECHARGEMENT
-# ======================
-def reload_page():
-    st.session_state.prev_user = st.session_state.user_code
-    st.experimental_rerun()
 
 # ======================
 # SELECTBOX UTILISATEUR
 # ======================
 selected_label = st.selectbox(
     "Choisissez votre nom",
-    options.keys(),
-    key="user_select",
-    index=0,
-    on_change=reload_page
+    options.keys()
 )
-st.session_state.user_code = options[selected_label]
+
+# mettre à jour user_code si changement
+if st.session_state.user_code != options[selected_label]:
+    st.session_state.user_code = options[selected_label]
+
 user_code = st.session_state.user_code
 
 # ======================
