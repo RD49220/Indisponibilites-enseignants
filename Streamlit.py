@@ -9,7 +9,7 @@ from google.oauth2.service_account import Credentials
 # ==============================
 
 NOM_FICHIER = "Indisponibilites-enseignants"
-ONGLET_DATA = "Feuille1"
+ONGLET_DATA = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
 
 JOURS = {
