@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ==============================
 # CONFIGURATION
@@ -18,7 +19,24 @@ CRENEAUX = [
     "17h-18h30"
 ]
 
-FICHIER = "indisponibilites.csv"
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+NOM_SHEET = "Indisponibilites-enseignants"  # ⚠️ doit être EXACTEMENT le nom du Google Sheet
+
+# ==============================
+# CONNEXION GOOGLE SHEETS
+# ==============================
+
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=SCOPES
+)
+
+client = gspread.authorize(creds)
+sheet = client.open(NOM_SHEET).sheet1
 
 # ==============================
 # INTERFACE
@@ -27,7 +45,9 @@ FICHIER = "indisponibilites.csv"
 st.set_page_config(page_title="Indisponibilités", layout="centered")
 
 st.title("📅 Saisie des indisponibilités")
-st.write("Cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**.")
+st.write(
+    "Cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**."
+)
 
 user = st.text_input("Vos initiales / votre nom")
 
@@ -40,12 +60,12 @@ for jour in JOURS:
     cols = st.columns(3)
     for i, creneau in enumerate(CRENEAUX):
         if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
-            selections.append({
-                "utilisateur": user,
-                "jour": jour,
-                "creneau": creneau,
-                "timestamp": datetime.now().isoformat()
-            })
+            selections.append([
+                user,
+                jour,
+                creneau,
+                datetime.now().isoformat()
+            ])
 
 st.divider()
 
@@ -59,13 +79,8 @@ if st.button("💾 Enregistrer"):
     elif not selections:
         st.warning("Aucun créneau sélectionné.")
     else:
-        df_new = pd.DataFrame(selections)
+        for row in selections:
+            sheet.append_row(row)
 
-        if os.path.exists(FICHIER):
-            df_old = pd.read_csv(FICHIER)
-            df = pd.concat([df_old, df_new], ignore_index=True)
-        else:
-            df = df_new
-
-        df.to_csv(FICHIER, index=False)
         st.success("✅ Vos indisponibilités ont été enregistrées.")
+
