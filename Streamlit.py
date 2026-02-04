@@ -24,19 +24,23 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-NOM_SHEET = "Indisponibilites-enseignants"  # <- ton nom exact de Google Sheet
+NOM_SHEET = "Indisponibilites-enseignants"  # <- ton nom exact du Google Sheet
 
 # ==============================
 # CONNEXION GOOGLE SHEETS
 # ==============================
 
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
-    scopes=SCOPES
-)
-
-client = gspread.authorize(creds)
-sheet = client.open(NOM_SHEET).sheet1
+try:
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=SCOPES
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open(NOM_SHEET).sheet1
+    st.success("✅ Connexion Google Sheets OK")
+except Exception as e:
+    st.error(f"❌ Erreur connexion Google Sheets : {e}")
+    st.stop()  # Arrête l'app si la connexion échoue
 
 # ==============================
 # INTERFACE
@@ -81,5 +85,4 @@ if st.button("💾 Enregistrer"):
     else:
         for row in selections:
             sheet.append_row(row)
-
         st.success("✅ Vos indisponibilités ont été enregistrées.")
