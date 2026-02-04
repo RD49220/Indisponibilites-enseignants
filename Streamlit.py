@@ -31,12 +31,10 @@ CRENEAUX = {
 # AUTH GOOGLE SHEETS
 # ======================
 creds_dict = st.secrets["gcp_service_account"]
-
 scopes = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-
 creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 client = gspread.authorize(creds)
 
@@ -127,6 +125,10 @@ with st.form(key=f"form_{user_code}"):
     creneaux_ponctuels = st.multiselect("Créneaux", list(CRENEAUX.values()))
 
     submit_ponctuel = st.form_submit_button("➕ Ajouter ce(s) créneau(x) ponctuel(s)")
+
+    # ======================
+    # AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION (juste après ajout)
+    # ======================
     if submit_ponctuel:
         for semaine in semaines:
             for jour_ponctuel in jours_ponctuels:
@@ -141,6 +143,20 @@ with st.form(key=f"form_{user_code}"):
                         "Créneau": creneau_ponctuel,
                         "Code_cr_streamlit": code_cr_streamlit
                     })
+
+    # ======================
+    # TABLEAU PONCTUELS HORS FORM pour suppression
+    # ======================
+    if st.session_state.ponctuels:
+        st.subheader("📝 Créneaux ponctuels ajoutés")
+        for idx, row in enumerate(st.session_state.ponctuels):
+            col1, col2, col3, col4 = st.columns([1,2,2,1])
+            col1.write(row['Semaine'])
+            col2.write(row['Jour'])
+            col3.write(row['Créneau'])
+            if col4.button("Supprimer", key=f"del_{idx}"):
+                st.session_state.ponctuels.pop(idx)
+                st.experimental_rerun()
 
     # ======================
     # COMMENTAIRE
@@ -158,20 +174,6 @@ with st.form(key=f"form_{user_code}"):
     # BOUTON ENREGISTRER
     # ======================
     submit = st.form_submit_button("💾 Enregistrer / Écraser" if rows_to_delete else "💾 Enregistrer")
-
-# ======================
-# AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION (HORS FORM)
-# ======================
-if st.session_state.ponctuels:
-    st.subheader("📝 Créneaux ponctuels ajoutés")
-    for idx, row in enumerate(st.session_state.ponctuels):
-        col1, col2, col3, col4 = st.columns([2,2,2,1])
-        col1.write(row['Semaine'])
-        col2.write(row['Jour'])
-        col3.write(row['Créneau'])
-        if col4.button("Supprimer", key=f"del_{idx}"):
-            st.session_state.ponctuels.pop(idx)
-            st.experimental_rerun()
 
 # ======================
 # ENREGISTREMENT
