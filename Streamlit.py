@@ -40,25 +40,38 @@ try:
     st.success("✅ Connexion Google Sheets OK")
 except Exception as e:
     st.error(f"❌ Erreur connexion Google Sheets : {e}")
-    st.stop()  # Arrête l'app si la connexion échoue
+    st.stop()
+
+# ==============================
+# RÉCUPÉRATION LISTE UTILISATEURS
+# ==============================
+
+try:
+    worksheet_users = client.open(NOM_SHEET).worksheet("Utilisateurs")
+    data_users = worksheet_users.get_all_values()[1:]  # ignorer la ligne d'en-tête
+    utilisateurs = [f"{row[0]} ({row[1]} {row[2]})" for row in data_users]
+except Exception as e:
+    st.error(f"❌ Impossible de récupérer la liste des utilisateurs : {e}")
+    st.stop()
 
 # ==============================
 # INTERFACE
 # ==============================
 
 st.set_page_config(page_title="Indisponibilités", layout="centered")
-
 st.title("📅 Saisie des indisponibilités")
 st.write(
-    "Cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**."
+    "Sélectionnez votre nom, cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**."
 )
 
-user = st.text_input("Vos initiales / votre nom")
-
-st.divider()
-
-# 🔹 Nouveau champ commentaire
-commentaire = st.text_area("💬 Commentaire libre (optionnel)")
+# Menu déroulant pour sélectionner l'utilisateur
+user_selection = st.selectbox(
+    "Sélectionnez votre enseignant",
+    utilisateurs,
+    index=0
+)
+# Extraire juste le code pour l'enregistrement
+user_code = user_selection.split(" ")[0]
 
 st.divider()
 
@@ -70,12 +83,16 @@ for jour in JOURS:
     for i, creneau in enumerate(CRENEAUX):
         if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
             selections.append([
-                user,
+                user_code,
                 jour,
                 creneau,
-                datetime.now().isoformat(),
-                commentaire  # ajoute le commentaire à chaque ligne
+                datetime.now().isoformat()
             ])
+
+st.divider()
+
+# Champ commentaire juste avant le bouton
+commentaire = st.text_area("💬 Commentaire libre (optionnel)")
 
 st.divider()
 
@@ -84,11 +101,13 @@ st.divider()
 # ==============================
 
 if st.button("💾 Enregistrer"):
-    if not user:
-        st.error("Merci d’indiquer votre nom ou vos initiales.")
+    if not user_code:
+        st.error("Merci de sélectionner votre nom / initiales.")
     elif not selections:
         st.warning("Aucun créneau sélectionné.")
     else:
+        # Ajouter le commentaire à chaque ligne
         for row in selections:
+            row.append(commentaire)
             sheet.append_row(row)
         st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
