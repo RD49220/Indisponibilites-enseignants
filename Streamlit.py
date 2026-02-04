@@ -24,7 +24,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-NOM_SHEET = "Indisponibilites-enseignants"  # <- ton nom exact du Google Sheet
+NOM_SHEET = "Indisponibilites-enseignants"
 
 # ==============================
 # CONNEXION GOOGLE SHEETS
@@ -48,7 +48,7 @@ except Exception as e:
 
 try:
     worksheet_users = client.open(NOM_SHEET).worksheet("Utilisateurs")
-    data_users = worksheet_users.get_all_values()[1:]  # ignorer la ligne d'en-tête
+    data_users = worksheet_users.get_all_values()[1:]
     utilisateurs = [f"{row[0]} ({row[1]} {row[2]})" for row in data_users]
 except Exception as e:
     st.error(f"❌ Impossible de récupérer la liste des utilisateurs : {e}")
@@ -70,10 +70,23 @@ user_selection = st.selectbox(
     utilisateurs,
     index=0
 )
-# Extraire juste le code pour l'enregistrement
 user_code = user_selection.split(" ")[0]
 
 st.divider()
+
+# ==============================
+# INITIALISATION SESSION_STATE POUR LES CHECKBOXES
+# ==============================
+
+for jour in JOURS:
+    for creneau in CRENEAUX:
+        key = f"{jour}_{creneau}"
+        if key not in st.session_state:
+            st.session_state[key] = False  # False par défaut
+
+# ==============================
+# AFFICHAGE DES CHECKBOXES
+# ==============================
 
 selections = []
 
@@ -81,13 +94,18 @@ for jour in JOURS:
     st.subheader(jour)
     cols = st.columns(3)
     for i, creneau in enumerate(CRENEAUX):
-        if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
+        key = f"{jour}_{creneau}"
+        # Liaison avec session_state pour éviter rerun complet
+        if cols[i % 3].checkbox(creneau, value=st.session_state[key], key=key):
+            st.session_state[key] = True
             selections.append([
                 user_code,
                 jour,
                 creneau,
                 datetime.now().isoformat()  # timestamp temporaire
             ])
+        else:
+            st.session_state[key] = False
 
 st.divider()
 
@@ -106,7 +124,7 @@ if st.button("💾 Enregistrer"):
     elif not selections:
         st.warning("Aucun créneau sélectionné.")
     else:
-        # 🔹 Ajouter les en-têtes si le Sheet est vide
+        # Ajouter les en-têtes si le Sheet est vide
         try:
             if sheet.row_count == 0 or sheet.get_all_values() == []:
                 sheet.append_row(["Utilisateur", "Jour", "Créneau", "Commentaire", "Timestamp"])
@@ -114,9 +132,14 @@ if st.button("💾 Enregistrer"):
             st.error(f"❌ Impossible d'ajouter les en-têtes : {e}")
             st.stop()
 
-        # 🔹 Ajouter le commentaire avant le timestamp
+        # Ajouter le commentaire avant le timestamp
         for row in selections:
-            row = row[:3] + [commentaire] + [row[3]]  # insère commentaire avant timestamp
+            row = row[:3] + [commentaire] + [row[3]]
             sheet.append_row(row)
 
         st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
+
+        # 🔹 Réinitialiser les checkboxes après enregistrement
+        for jour in JOURS:
+            for creneau in CRENEAUX:
+                st.session_state[f"{jour}_{creneau}"] = False
