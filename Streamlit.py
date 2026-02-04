@@ -76,7 +76,7 @@ user_rows = [row for row in all_data[1:] if row[0] == user_code]
 existing_codes = set()
 for row in user_rows:
     if len(row) > 4:
-        existing_codes.add(row[4].strip())  # code_creneau ou code_cr_streamlit
+        existing_codes.add(row[4].strip())
 existing_comment = user_rows[0][5] if user_rows and len(user_rows[0]) > 5 else ""
 rows_to_delete = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
 
@@ -143,20 +143,6 @@ with st.form(key=f"form_{user_code}"):
                     })
 
     # ======================
-    # AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION
-    # ======================
-    if st.session_state.ponctuels:
-        st.subheader("📝 Créneaux ponctuels ajoutés")
-        for idx, row in enumerate(st.session_state.ponctuels):
-            col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
-            col1.write(row['Semaine'])
-            col2.write(row['Jour'])
-            col3.write(row['Créneau'])
-            if col4.button("Supprimer", key=f"del_{idx}"):
-                st.session_state.ponctuels.pop(idx)
-                st.experimental_rerun()
-
-    # ======================
     # COMMENTAIRE
     # ======================
     commentaire = st.text_area("💬 Commentaire", value=existing_comment, height=100)
@@ -172,6 +158,20 @@ with st.form(key=f"form_{user_code}"):
     # BOUTON ENREGISTRER
     # ======================
     submit = st.form_submit_button("💾 Enregistrer / Écraser" if rows_to_delete else "💾 Enregistrer")
+
+# ======================
+# AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION (HORS FORM)
+# ======================
+if st.session_state.ponctuels:
+    st.subheader("📝 Créneaux ponctuels ajoutés")
+    for idx, row in enumerate(st.session_state.ponctuels):
+        col1, col2, col3, col4 = st.columns([2,2,2,1])
+        col1.write(row['Semaine'])
+        col2.write(row['Jour'])
+        col3.write(row['Créneau'])
+        if col4.button("Supprimer", key=f"del_{idx}"):
+            st.session_state.ponctuels.pop(idx)
+            st.experimental_rerun()
 
 # ======================
 # ENREGISTREMENT
