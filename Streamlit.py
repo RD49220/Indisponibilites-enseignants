@@ -24,7 +24,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-NOM_SHEET = "Indisponibilites-enseignants"  # <- ton nom exact du Google Sheet
+NOM_SHEET = "Indisponibilites-enseignants"
 
 # ==============================
 # CONNEXION GOOGLE SHEETS
@@ -48,7 +48,7 @@ except Exception as e:
 
 try:
     worksheet_users = client.open(NOM_SHEET).worksheet("Utilisateurs")
-    data_users = worksheet_users.get_all_values()[1:]  # ignorer la ligne d'en-tête
+    data_users = worksheet_users.get_all_values()[1:]
     utilisateurs = [f"{row[0]} ({row[1]} {row[2]})" for row in data_users]
 except Exception as e:
     st.error(f"❌ Impossible de récupérer la liste des utilisateurs : {e}")
@@ -61,7 +61,7 @@ except Exception as e:
 st.set_page_config(page_title="Indisponibilités", layout="centered")
 st.title("📅 Saisie des indisponibilités")
 st.write(
-    "Sélectionnez votre nom, cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**."
+    "Sélectionnez votre nom, puis choisissez vos créneaux par jour et ajoutez un commentaire si nécessaire."
 )
 
 # Menu déroulant pour sélectionner l'utilisateur
@@ -70,24 +70,27 @@ user_selection = st.selectbox(
     utilisateurs,
     index=0
 )
-# Extraire juste le code pour l'enregistrement
 user_code = user_selection.split(" ")[0]
 
 st.divider()
 
 selections = []
 
+# 🔹 Multiselect par jour
 for jour in JOURS:
     st.subheader(jour)
-    cols = st.columns(3)
-    for i, creneau in enumerate(CRENEAUX):
-        if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
-            selections.append([
-                user_code,
-                jour,
-                creneau,
-                datetime.now().isoformat()  # timestamp temporaire
-            ])
+    creneaux_selectionnes = st.multiselect(
+        f"Cochez vos indisponibilités pour {jour}",
+        CRENEAUX,
+        key=f"ms_{jour}"
+    )
+    for creneau in creneaux_selectionnes:
+        selections.append([
+            user_code,
+            jour,
+            creneau,
+            datetime.now().isoformat()  # timestamp temporaire
+        ])
 
 st.divider()
 
@@ -116,7 +119,7 @@ if st.button("💾 Enregistrer"):
 
         # 🔹 Ajouter le commentaire avant le timestamp
         for row in selections:
-            row = row[:3] + [commentaire] + [row[3]]  # insère commentaire avant timestamp
+            row = row[:3] + [commentaire] + [row[3]]
             sheet.append_row(row)
 
         st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
