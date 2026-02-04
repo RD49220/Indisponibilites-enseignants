@@ -127,38 +127,6 @@ with st.form(key=f"form_{user_code}"):
     submit_ponctuel = st.form_submit_button("➕ Ajouter ce(s) créneau(x) ponctuel(s)")
 
     # ======================
-    # AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION (juste après ajout)
-    # ======================
-    if submit_ponctuel:
-        for semaine in semaines:
-            for jour_ponctuel in jours_ponctuels:
-                for creneau_ponctuel in creneaux_ponctuels:
-                    code_jour = JOURS[jour_ponctuel]
-                    num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
-                    code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"
-
-                    st.session_state.ponctuels.append({
-                        "Semaine": semaine,
-                        "Jour": jour_ponctuel,
-                        "Créneau": creneau_ponctuel,
-                        "Code_cr_streamlit": code_cr_streamlit
-                    })
-
-    # ======================
-    # TABLEAU PONCTUELS HORS FORM pour suppression
-    # ======================
-    if st.session_state.ponctuels:
-        st.subheader("📝 Créneaux ponctuels ajoutés")
-        for idx, row in enumerate(st.session_state.ponctuels):
-            col1, col2, col3, col4 = st.columns([1,2,2,1])
-            col1.write(row['Semaine'])
-            col2.write(row['Jour'])
-            col3.write(row['Créneau'])
-            if col4.button("Supprimer", key=f"del_{idx}"):
-                st.session_state.ponctuels.pop(idx)
-                st.experimental_rerun()
-
-    # ======================
     # COMMENTAIRE
     # ======================
     commentaire = st.text_area("💬 Commentaire", value=existing_comment, height=100)
@@ -174,6 +142,38 @@ with st.form(key=f"form_{user_code}"):
     # BOUTON ENREGISTRER
     # ======================
     submit = st.form_submit_button("💾 Enregistrer / Écraser" if rows_to_delete else "💾 Enregistrer")
+
+# ======================
+# AJOUT PONCTUELS DANS SESSION
+# ======================
+if submit_ponctuel:
+    for semaine in semaines:
+        for jour_ponctuel in jours_ponctuels:
+            for creneau_ponctuel in creneaux_ponctuels:
+                code_jour = JOURS[jour_ponctuel]
+                num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
+                code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"
+
+                st.session_state.ponctuels.append({
+                    "Semaine": semaine,
+                    "Jour": jour_ponctuel,
+                    "Créneau": creneau_ponctuel,
+                    "Code_cr_streamlit": code_cr_streamlit
+                })
+
+# ======================
+# TABLEAU PONCTUELS HORS FORM
+# ======================
+if st.session_state.ponctuels:
+    st.subheader("📝 Créneaux ponctuels ajoutés")
+    for idx, row in enumerate(st.session_state.ponctuels):
+        col1, col2, col3, col4 = st.columns([1,2,2,1])
+        col1.write(row['Semaine'])
+        col2.write(row['Jour'])
+        col3.write(row['Créneau'])
+        if col4.button("Supprimer", key=f"del_{idx}"):
+            st.session_state.ponctuels.pop(idx)
+            st.experimental_rerun()
 
 # ======================
 # ENREGISTREMENT
