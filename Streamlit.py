@@ -18,6 +18,24 @@ CRENEAUX = [
     "17h-18h30"
 ]
 
+# Codes pour concaténation
+JOURS_CODE = {
+    "Lundi": "LUN",
+    "Mardi": "MAR",
+    "Mercredi": "MER",
+    "Jeudi": "JEU",
+    "Vendredi": "VEN"
+}
+
+CRENEAUX_CODE = {
+    "8h-9h30": "_1",
+    "9h30-11h": "_2",
+    "11h-12h30": "_3",
+    "14h-15h30": "_4",
+    "15h30-17h": "_5",
+    "17h-18h30": "_6"
+}
+
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -60,7 +78,7 @@ except Exception as e:
 st.set_page_config(page_title="Indisponibilités", layout="centered")
 st.title("📅 Saisie des indisponibilités")
 st.write(
-    "Sélectionnez votre nom, cochez les créneaux où vous êtes **indisponible** puis cliquez sur **Enregistrer**."
+    "Sélectionnez votre nom, cochez les créneaux où vous êtes **indisponible**, puis ajoutez un commentaire si nécessaire."
 )
 
 # Menu déroulant pour sélectionner l'utilisateur
@@ -84,14 +102,15 @@ for jour in JOURS:
     cols = st.columns(3)
     for i, creneau in enumerate(CRENEAUX):
         key = f"{jour}_{creneau}"
-        # 🔹 On ne modifie pas st.session_state, juste on lit la valeur de la checkbox
         checked = cols[i % 3].checkbox(creneau, key=key)
         if checked:
+            code_creneau = JOURS_CODE[jour] + CRENEAUX_CODE[creneau]
             selections.append([
                 user_code,
                 jour,
                 creneau,
-                datetime.now().isoformat()  # timestamp
+                code_creneau,
+                datetime.now().isoformat()  # timestamp temporaire
             ])
 
 st.divider()
@@ -114,14 +133,28 @@ if st.button("💾 Enregistrer"):
         # 🔹 Ajouter les en-têtes si le Sheet est vide
         try:
             if sheet.row_count == 0 or sheet.get_all_values() == []:
-                sheet.append_row(["Utilisateur", "Jour", "Créneau", "Commentaire", "Timestamp"])
+                sheet.append_row(["Utilisateur", "Jour", "Créneau", "Code_Créneau", "Commentaire", "Timestamp"])
         except Exception as e:
             st.error(f"❌ Impossible d'ajouter les en-têtes : {e}")
             st.stop()
 
+        # 🔹 Vérifier si l'utilisateur a déjà enregistré
+        all_data = sheet.get_all_values()
+        existing_rows = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
+
+        if existing_rows:
+            if st.confirm(f"Vous avez déjà enregistré vos indisponibilités. "
+                          f"Confirmer écrasera les anciennes lignes ({len(existing_rows)} lignes)."):
+                # Supprimer anciennes lignes de bas en haut
+                for r in reversed(existing_rows):
+                    sheet.delete_rows(r)
+            else:
+                st.info("❌ Enregistrement annulé.")
+                st.stop()
+
         # 🔹 Ajouter le commentaire avant le timestamp
         for row in selections:
-            row = row[:3] + [commentaire] + [row[3]]
-            sheet.append_row(row)
+            row_to_append = row[:4] + [commentaire] + [row[4]]
+            sheet.append_row(row_to_append)
 
         st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
