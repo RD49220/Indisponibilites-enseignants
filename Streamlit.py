@@ -51,17 +51,23 @@ users = [{"code": row[0], "nom": row[1], "prenom": row[2]} for row in users_data
 options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
 # ======================
-# DETECTION CHANGEMENT UTILISATEUR
+# SESSION STATE INITIALIZATION
 # ======================
 if "user_code" not in st.session_state:
     st.session_state.user_code = None
 if "prev_user" not in st.session_state:
     st.session_state.prev_user = None
 
+# ======================
+# CALLBACK POUR RECHARGEMENT
+# ======================
 def reload_page():
     st.session_state.prev_user = st.session_state.user_code
     st.experimental_rerun()
 
+# ======================
+# SELECTBOX UTILISATEUR
+# ======================
 selected_label = st.selectbox(
     "Choisissez votre nom",
     options.keys(),
@@ -104,7 +110,7 @@ with st.form(key=f"form_{user_code}"):
         for num, label in CRENEAUX.items():
             code_creneau = f"{jour_code}_{num}"
             code_cr_streamlit = f"{user_code}_{code_creneau}"  # nouvelle colonne
-            key = f"{user_code}_{jour_code}_{num}"  # clé dynamique basée sur l'utilisateur
+            key = f"{user_code}_{jour_code}_{num}"  # clé dynamique par utilisateur
 
             checked = code_creneau in existing_codes
 
