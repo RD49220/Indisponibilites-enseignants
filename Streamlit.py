@@ -75,4 +75,48 @@ user_code = user_selection.split(" ")[0]
 
 st.divider()
 
-sel
+selections = []
+
+for jour in JOURS:
+    st.subheader(jour)
+    cols = st.columns(3)
+    for i, creneau in enumerate(CRENEAUX):
+        if cols[i % 3].checkbox(creneau, key=f"{jour}_{creneau}"):
+            selections.append([
+                user_code,
+                jour,
+                creneau,
+                datetime.now().isoformat()  # timestamp temporaire
+            ])
+
+st.divider()
+
+# Champ commentaire juste avant le bouton
+commentaire = st.text_area("💬 Commentaire libre (optionnel)")
+
+st.divider()
+
+# ==============================
+# ENREGISTREMENT
+# ==============================
+
+if st.button("💾 Enregistrer"):
+    if not user_code:
+        st.error("Merci de sélectionner votre nom / initiales.")
+    elif not selections:
+        st.warning("Aucun créneau sélectionné.")
+    else:
+        # 🔹 Ajouter les en-têtes si le Sheet est vide
+        try:
+            if sheet.row_count == 0 or sheet.get_all_values() == []:
+                sheet.append_row(["Utilisateur", "Jour", "Créneau", "Commentaire", "Timestamp"])
+        except Exception as e:
+            st.error(f"❌ Impossible d'ajouter les en-têtes : {e}")
+            st.stop()
+
+        # 🔹 Ajouter le commentaire avant le timestamp
+        for row in selections:
+            row = row[:3] + [commentaire] + [row[3]]  # insère commentaire avant timestamp
+            sheet.append_row(row)
+
+        st.success("✅ Vos indisponibilités et commentaires ont été enregistrés.")
