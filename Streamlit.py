@@ -43,20 +43,11 @@ sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
 users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
 
 # ======================
-# UI
-# ======================
-st.title("📅 Indisponibilités enseignants")
-
-# ======================
 # CHARGER UTILISATEURS
 # ======================
 users_data = users_sheet.get_all_values()[1:]  # skip header
 users = [
-    {
-        "code": row[0],
-        "nom": row[1],
-        "prenom": row[2]
-    }
+    {"code": row[0], "nom": row[1], "prenom": row[2]}
     for row in users_data if row
 ]
 
@@ -65,21 +56,28 @@ options = {
     for u in users
 }
 
+# ======================
+# DETECTION CHANGEMENT UTILISATEUR
+# ======================
+if "prev_user" not in st.session_state:
+    st.session_state.prev_user = None
+
 selected_label = st.selectbox(
     "Choisissez votre nom",
     options.keys()
 )
-
 user_code = options[selected_label]
+
+# Si on change d'utilisateur, on recharge la page pour réinitialiser toutes les checkboxes
+if st.session_state.prev_user != user_code:
+    st.session_state.prev_user = user_code
+    st.experimental_rerun()
 
 # ======================
 # LECTURE DONNÉES EXISTANTES
 # ======================
 all_data = sheet.get_all_values()
-user_rows = [
-    row for row in all_data[1:]
-    if row[0] == user_code
-]
+user_rows = [row for row in all_data[1:] if row[0] == user_code]
 
 existing_codes = set()
 for row in user_rows:
@@ -88,30 +86,27 @@ for row in user_rows:
 
 existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else ""
 
+rows_to_delete = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
+
 # ======================
 # MESSAGE SI DÉJÀ ENREGISTRÉ
 # ======================
-rows_to_delete = [
-    i for i, row in enumerate(all_data[1:], start=2)
-    if row[0] == user_code
-]
-
 if rows_to_delete:
     st.warning("⚠️ Vous avez déjà enregistré vos indisponibilités.")
 
 # ======================
 # FORMULAIRE
 # ======================
-with st.form(key="indispo_form"):
+with st.form(key=f"form_{user_code}"):
     selections = []
 
     for jour, jour_code in JOURS.items():
         st.subheader(jour)
         for num, label in CRENEAUX.items():
             code_creneau = f"{jour_code}_{num}"
-            key = f"{jour_code}_{num}"
+            code_cr_streamlit = f"{user_code}_{code_creneau}"  # nouvelle colonne
+            key = f"{user_code}_{jour_code}_{num}"  # clé dynamique basée sur l'utilisateur
 
-            # précoché si existant pour l'utilisateur actuel
             checked = code_creneau in existing_codes
 
             if st.checkbox(label, value=checked, key=key):
@@ -121,7 +116,8 @@ with st.form(key="indispo_form"):
                     label,
                     code_creneau,
                     "",  # commentaire ajouté plus bas
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    code_cr_streamlit
                 ])
 
     commentaire = st.text_area(
@@ -130,7 +126,6 @@ with st.form(key="indispo_form"):
         height=100
     )
 
-    # Checkbox pour confirmer écrasement si déjà existant
     confirm = False
     if rows_to_delete:
         confirm = st.checkbox("Je confirme l’écrasement des anciennes données")
@@ -147,24 +142,24 @@ if submit:
         st.warning("Aucun créneau sélectionné.")
         st.stop()
 
-    # Si l'utilisateur avait déjà des indispos et il confirme
     if rows_to_delete and not confirm:
         st.warning("Vous devez confirmer l’écrasement des anciennes données pour continuer.")
         st.stop()
 
-    # suppression du bas vers le haut si écrasement
+    # suppression des anciennes lignes si nécessaire
     for row_index in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(row_index)
 
-    # ajout nouvelles lignes
+    # ajout des nouvelles lignes avec code_cr_streamlit en colonne 7
     for row in selections:
         sheet.append_row([
-            row[0],        # Code enseignant
-            row[1],        # Jour
-            row[2],        # Créneau
-            row[3],        # Code créneau
-            commentaire,   # Commentaire
-            row[5]         # Timestamp
+            row[0],  # Code enseignant
+            row[1],  # Jour
+            row[2],  # Créneau
+            row[3],  # Code créneau
+            commentaire,  # Commentaire
+            row[5],  # Timestamp
+            row[6]   # code_cr_streamlit
         ])
 
     st.success("✅ Indisponibilités enregistrées / mises à jour avec succès")
