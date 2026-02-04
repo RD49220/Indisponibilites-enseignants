@@ -81,7 +81,8 @@ user_rows = [
     if row[0] == user_code
 ]
 
-existing_codes = {row[3] for row in user_rows}
+# ⚡ Normalisation pour précocher correctement
+existing_codes = {str(row[3]).strip() for row in user_rows}
 existing_comment = user_rows[0][4] if user_rows else ""
 
 st.divider()
@@ -97,6 +98,7 @@ for jour, jour_code in JOURS.items():
         code_creneau = f"{jour_code}_{num}"
         key = f"{jour_code}_{num}"
 
+        # ✅ précoché si existant
         checked = code_creneau in existing_codes
 
         if st.checkbox(label, value=checked, key=key):
