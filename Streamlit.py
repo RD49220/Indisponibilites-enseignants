@@ -56,19 +56,15 @@ options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users
 # ======================
 if "user_code" not in st.session_state:
     st.session_state.user_code = None
+if "ponctuels" not in st.session_state:
+    st.session_state.ponctuels = []
 
 # ======================
 # SELECTBOX UTILISATEUR
 # ======================
-selected_label = st.selectbox(
-    "Choisissez votre nom",
-    options.keys()
-)
-
-# mettre à jour user_code si changement
+selected_label = st.selectbox("Choisissez votre nom", options.keys())
 if st.session_state.user_code != options[selected_label]:
     st.session_state.user_code = options[selected_label]
-
 user_code = st.session_state.user_code
 
 # ======================
@@ -81,9 +77,7 @@ existing_codes = set()
 for row in user_rows:
     if len(row) > 3:
         existing_codes.add(row[3].strip())
-
 existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else ""
-
 rows_to_delete = [i for i, row in enumerate(all_data[1:], start=2) if row[0] == user_code]
 
 # ======================
@@ -96,6 +90,7 @@ if rows_to_delete:
 # FORMULAIRE
 # ======================
 with st.form(key=f"form_{user_code}"):
+
     selections = []
 
     # ======================
@@ -107,7 +102,7 @@ with st.form(key=f"form_{user_code}"):
         for i, (num, label) in enumerate(CRENEAUX.items()):
             code_creneau = f"{jour_code}_{num}"
             code_cr_streamlit = f"{user_code}_{code_creneau}"  # nouvelle colonne
-            key = f"{user_code}_{jour_code}_{num}"  # clé dynamique par utilisateur
+            key = f"{user_code}_{jour_code}_{num}"
 
             checked = code_creneau in existing_codes
 
@@ -130,47 +125,43 @@ with st.form(key=f"form_{user_code}"):
     jour_ponctuel = st.selectbox("Jour", list(JOURS.keys()))
     creneau_ponctuel = st.selectbox("Créneau", list(CRENEAUX.values()))
 
-    # ⚡ Ici on utilise st.form_submit_button au lieu de st.button
     submit_ponctuel = st.form_submit_button("➕ Ajouter ce créneau ponctuel")
-
     if submit_ponctuel:
         code_jour = JOURS[jour_ponctuel]
         num_creneau = [k for k, v in CRENEAUX.items() if v == creneau_ponctuel][0]
-        code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"  # _P = ponctuel
+        code_cr_streamlit = f"{user_code}_{code_jour}_{num_creneau}_P"
 
-        sheet.append_row([
-            user_code,
-            f"{jour_ponctuel} (Semaine {semaine})",
-            creneau_ponctuel,
-            f"{code_jour}_{num_creneau}",
-            "",  # commentaire vide
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            code_cr_streamlit
-        ])
-        st.success("✅ Créneau ponctuel ajouté !")
+        st.session_state.ponctuels.append({
+            "Semaine": semaine,
+            "Jour": jour_ponctuel,
+            "Créneau": creneau_ponctuel,
+            "Code_cr_streamlit": code_cr_streamlit
+        })
+
+    # Affichage dynamique des créneaux ponctuels ajoutés
+    if st.session_state.ponctuels:
+        st.subheader("📝 Créneaux ponctuels ajoutés")
+        st.table(st.session_state.ponctuels)
 
     # ======================
     # COMMENTAIRE
     # ======================
-    commentaire = st.text_area(
-        "💬 Commentaire",
-        value=existing_comment,
-        height=100
-    )
+    commentaire = st.text_area("💬 Commentaire", value=existing_comment, height=100)
 
+    # ======================
+    # CONFIRMATION ÉCRASEMENT
+    # ======================
     confirm = False
     if rows_to_delete:
         confirm = st.checkbox("Je confirme l’écrasement des anciennes données")
 
-    submit = st.form_submit_button(
-        "💾 Enregistrer" if not rows_to_delete else "💾 Enregistrer / Écraser"
-    )
+    submit = st.form_submit_button("💾 Enregistrer / Écraser" if rows_to_delete else "💾 Enregistrer")
 
 # ======================
 # ENREGISTREMENT
 # ======================
 if submit:
-    if not selections:
+    if not selections and not st.session_state.ponctuels:
         st.warning("Aucun créneau sélectionné.")
         st.stop()
 
@@ -182,7 +173,7 @@ if submit:
     for row_index in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(row_index)
 
-    # ajout des nouvelles lignes avec code_cr_streamlit en colonne 7
+    # ajout des créneaux réguliers
     for row in selections:
         sheet.append_row([
             row[0],  # Code enseignant
@@ -194,4 +185,19 @@ if submit:
             row[6]   # code_cr_streamlit
         ])
 
-    st.success("✅ Indisponibilités enregistrées / mises à jour avec succès")
+    # ajout des créneaux ponctuels
+    for row in st.session_state.ponctuels:
+        code_jour, num_creneau = row["Code_cr_streamlit"].split("_")[1:3]
+        sheet.append_row([
+            user_code,
+            f"{row['Jour']} (Semaine {row['Semaine']})",
+            row['Créneau'],
+            f"{code_jour}_{num_creneau}",
+            "",  # commentaire vide pour ponctuel
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            row['Code_cr_streamlit']
+        ])
+
+    # vider la liste ponctuels après enregistrement
+    st.session_state.ponctuels = []
+    st.success("✅ Indisponibilités et créneaux ponctuels enregistrés avec succès")
