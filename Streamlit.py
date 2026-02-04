@@ -73,21 +73,6 @@ selected_label = st.selectbox(
 user_code = options[selected_label]
 
 # ======================
-# RESET CHECKBOXES SI CHANGEMENT D'UTILISATEUR
-# ======================
-if 'last_user' not in st.session_state:
-    st.session_state['last_user'] = None
-
-if st.session_state['last_user'] != user_code:
-    # reset toutes les checkbox de créneaux
-    for jour_code in JOURS.values():
-        for num in CRENEAUX.keys():
-            key = f"{jour_code}_{num}"
-            if key in st.session_state:
-                del st.session_state[key]
-    st.session_state['last_user'] = user_code
-
-# ======================
 # LECTURE DONNÉES EXISTANTES
 # ======================
 all_data = sheet.get_all_values()
@@ -106,80 +91,72 @@ existing_comment = user_rows[0][4] if user_rows and len(user_rows[0]) > 4 else "
 st.divider()
 
 # ======================
-# SÉLECTION INDISPONIBILITÉS
+# FORMULAIRE STREAMLIT
 # ======================
-selections = []
+with st.form(key="indispo_form"):
+    selections = []
 
-for jour, jour_code in JOURS.items():
-    st.subheader(jour)
-    for num, label in CRENEAUX.items():
-        code_creneau = f"{jour_code}_{num}"
-        key = f"{jour_code}_{num}"
+    for jour, jour_code in JOURS.items():
+        st.subheader(jour)
+        for num, label in CRENEAUX.items():
+            code_creneau = f"{jour_code}_{num}"
+            key = f"{jour_code}_{num}"
 
-        # ✅ précoché si existant
-        checked = code_creneau in existing_codes
+            # précoché si existant
+            checked = code_creneau in existing_codes
 
-        if st.checkbox(label, value=checked, key=key):
-            selections.append([
-                user_code,
-                jour,
-                label,
-                code_creneau,
-                "",  # commentaire (ajouté plus bas)
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ])
+            if st.checkbox(label, value=checked, key=key):
+                selections.append([
+                    user_code,
+                    jour,
+                    label,
+                    code_creneau,
+                    "",  # commentaire ajouté plus bas
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                ])
 
-st.divider()
-
-# ======================
-# COMMENTAIRE
-# ======================
-commentaire = st.text_area(
-    "💬 Commentaire",
-    value=existing_comment,
-    height=100
-)
-
-# ======================
-# ENREGISTREMENT
-# ======================
-rows_to_delete = [
-    i for i, row in enumerate(all_data[1:], start=2)
-    if row[0] == user_code
-]
-
-# --- si l'utilisateur a déjà des lignes, proposer bouton "Écraser et enregistrer"
-if rows_to_delete:
-    st.warning(
-        "⚠️ Vous avez déjà enregistré des indisponibilités."
+    # ======================
+    # COMMENTAIRE
+    # ======================
+    commentaire = st.text_area(
+        "💬 Commentaire",
+        value=existing_comment,
+        height=100
     )
-    if st.button("Écraser et enregistrer"):
+
+    # ======================
+    # BOUTON SUBMIT
+    # ======================
+    submit = st.form_submit_button("💾 Enregistrer / Écraser si déjà existant")
+
+# ======================
+# ENREGISTREMENT APRÈS SUBMIT
+# ======================
+if submit:
+    if not selections:
+        st.warning("Aucun créneau sélectionné.")
+        st.stop()
+
+    # trouver les lignes à supprimer si l'utilisateur a déjà enregistré
+    rows_to_delete = [
+        i for i, row in enumerate(all_data[1:], start=2)
+        if row[0] == user_code
+    ]
+
+    if rows_to_delete:
         # suppression du bas vers le haut
         for row_index in sorted(rows_to_delete, reverse=True):
             sheet.delete_rows(row_index)
 
-        # ajout nouvelles lignes
-        for row in selections:
-            sheet.append_row([
-                row[0],        # Code enseignant
-                row[1],        # Jour
-                row[2],        # Créneau
-                row[3],        # Code créneau
-                commentaire,   # Commentaire
-                row[5]         # Timestamp
-            ])
-        st.success("✅ Indisponibilités mises à jour avec succès")
+    # ajout nouvelles lignes
+    for row in selections:
+        sheet.append_row([
+            row[0],        # Code enseignant
+            row[1],        # Jour
+            row[2],        # Créneau
+            row[3],        # Code créneau
+            commentaire,   # Commentaire
+            row[5]         # Timestamp
+        ])
 
-# --- sinon bouton normal d'enregistrement
-else:
-    if st.button("💾 Enregistrer"):
-        for row in selections:
-            sheet.append_row([
-                row[0],
-                row[1],
-                row[2],
-                row[3],
-                commentaire,
-                row[5]
-            ])
-        st.success("✅ Indisponibilités enregistrées avec succès")
+    st.success("✅ Indisponibilités enregistrées / mises à jour avec succès")
