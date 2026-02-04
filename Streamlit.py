@@ -143,12 +143,18 @@ with st.form(key=f"form_{user_code}"):
                     })
 
     # ======================
-    # AFFICHAGE TABLEAU PONCTUELS
+    # AFFICHAGE TABLEAU PONCTUELS AVEC SUPPRESSION
     # ======================
     if st.session_state.ponctuels:
         st.subheader("📝 Créneaux ponctuels ajoutés")
-        df_display = [{k: v for k, v in row.items() if k != "Code_cr_streamlit"} for row in st.session_state.ponctuels]
-        st.table(df_display)
+        for idx, row in enumerate(st.session_state.ponctuels):
+            col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+            col1.write(row['Semaine'])
+            col2.write(row['Jour'])
+            col3.write(row['Créneau'])
+            if col4.button("Supprimer", key=f"del_{idx}"):
+                st.session_state.ponctuels.pop(idx)
+                st.experimental_rerun()
 
     # ======================
     # COMMENTAIRE
