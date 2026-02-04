@@ -46,32 +46,31 @@ users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
 # CHARGER UTILISATEURS
 # ======================
 users_data = users_sheet.get_all_values()[1:]  # skip header
-users = [
-    {"code": row[0], "nom": row[1], "prenom": row[2]}
-    for row in users_data if row
-]
+users = [{"code": row[0], "nom": row[1], "prenom": row[2]} for row in users_data if row]
 
-options = {
-    f"{u['code']} – {u['nom']} {u['prenom']}": u["code"]
-    for u in users
-}
+options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
 # ======================
 # DETECTION CHANGEMENT UTILISATEUR
 # ======================
+if "user_code" not in st.session_state:
+    st.session_state.user_code = None
 if "prev_user" not in st.session_state:
     st.session_state.prev_user = None
 
+def reload_page():
+    st.session_state.prev_user = st.session_state.user_code
+    st.experimental_rerun()
+
 selected_label = st.selectbox(
     "Choisissez votre nom",
-    options.keys()
+    options.keys(),
+    key="user_select",
+    index=0,
+    on_change=reload_page
 )
-user_code = options[selected_label]
-
-# Si on change d'utilisateur, on recharge la page pour réinitialiser toutes les checkboxes
-if st.session_state.prev_user != user_code:
-    st.session_state.prev_user = user_code
-    st.experimental_rerun()
+st.session_state.user_code = options[selected_label]
+user_code = st.session_state.user_code
 
 # ======================
 # LECTURE DONNÉES EXISTANTES
