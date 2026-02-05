@@ -166,19 +166,19 @@ if submit_ponctuel:
 # ======================
 if st.session_state.ponctuels:
     st.subheader("📝 Créneaux ponctuels ajoutés")
-    delete_idx = None  # index à supprimer
+    to_delete = []  # indices à supprimer
     for idx, row in enumerate(st.session_state.ponctuels):
         col1, col2, col3, col4 = st.columns([1,2,2,1])
         col1.write(row['Semaine'])
         col2.write(row['Jour'])
         col3.write(row['Créneau'])
         if col4.button("Supprimer", key=f"del_{idx}"):
-            delete_idx = idx
+            to_delete.append(idx)
 
-    # suppression après la boucle
-    if delete_idx is not None:
-        st.session_state.ponctuels.pop(delete_idx)
-        st.experimental_rerun()
+    if to_delete:
+        for idx in sorted(to_delete, reverse=True):
+            st.session_state.ponctuels.pop(idx)
+        # plus besoin de st.experimental_rerun()
 
 # ======================
 # ENREGISTREMENT
