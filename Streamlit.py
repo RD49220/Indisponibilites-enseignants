@@ -85,8 +85,8 @@ if st.session_state.selected_user != user_code:
 all_data = sheet.get_all_values()
 user_rows = [r for r in all_data[1:] if r[0] == user_code]
 
-existing_codes = {r[6] for r in user_rows if len(r) > 6}
-existing_comment = user_rows[0][4] if user_rows else ""
+existing_codes = {r[5] for r in user_rows if len(r) > 5}
+existing_comment = user_rows[0][6] if user_rows else ""
 
 st.divider()
 
@@ -106,9 +106,10 @@ for jour, j_code in JOURS.items():
 
         if cols[i % 3].checkbox(label, value=checked, key=code_streamlit):
             selections.append({
+                "semaine": "",
                 "jour": jour,
                 "creneau": label,
-                "code_cr": f"{j_code}_{num}",
+                "code_creneau": f"{j_code}_{num}",
                 "code_streamlit": code_streamlit
             })
         i += 1
@@ -132,9 +133,11 @@ with st.form("ponctuel_form"):
             for j in jours_sel:
                 for c in creneaux_sel:
                     st.session_state.ponctuels.append({
-                        "Semaine": s,
-                        "Jour": j,
-                        "Créneau": c
+                        "semaine": s,
+                        "jour": j,
+                        "creneau": c,
+                        "code_creneau": "PONCTUEL",
+                        "code_streamlit": f"{user_code}_{j}_{c}"
                     })
 
 # ======================
@@ -153,9 +156,9 @@ if st.session_state.ponctuels:
 
     for idx, row in enumerate(st.session_state.ponctuels):
         c1, c2, c3, c4 = st.columns([1, 2, 2, 0.5])
-        c1.write(row["Semaine"])
-        c2.write(row["Jour"])
-        c3.write(row["Créneau"])
+        c1.write(row["semaine"])
+        c2.write(row["jour"])
+        c3.write(row["creneau"])
         if c4.button("🗑️", key=f"del_{idx}"):
             to_delete.append(idx)
 
@@ -186,30 +189,30 @@ if st.button("💾 Enregistrer"):
     for i in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(i)
 
-    # CRÉNEAUX RÉGULIERS — ORDRE STRICT
+    # RÉGULIERS
     for s in selections:
         sheet.append_row([
-            user_code,                              # A Code enseignant
-            s["jour"],                              # B Jour
-            s["creneau"],                           # C Créneau
-            s["code_cr"],                           # D Code créneau
-            commentaire,                            # E Commentaire
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # F Timestamp
-            s["code_streamlit"],                    # G Code streamlit
-            ""                                      # H Semaine
+            user_code,                    # A Code enseignant
+            s["semaine"],                 # B Semaine
+            s["jour"],                    # C Jour
+            s["creneau"],                 # D Créneau
+            s["code_creneau"],            # E Code créneau
+            s["code_streamlit"],          # F Code streamlit
+            commentaire,                  # G Commentaire
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # H Timestamp
         ])
 
-    # CRÉNEAUX PONCTUELS — ORDRE STRICT
+    # PONCTUELS
     for p in st.session_state.ponctuels:
         sheet.append_row([
-            user_code,                              # A Code enseignant
-            p["Jour"],                              # B Jour
-            p["Créneau"],                           # C Créneau
-            "PONCTUEL",                             # D Code créneau
-            commentaire,                            # E Commentaire
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # F Timestamp
-            f"{user_code}_{p['Jour']}_{p['Créneau']}",    # G Code streamlit
-            p["Semaine"]                            # H Semaine
+            user_code,                    # A Code enseignant
+            p["semaine"],                 # B Semaine
+            p["jour"],                    # C Jour
+            p["creneau"],                 # D Créneau
+            p["code_creneau"],            # E Code créneau
+            p["code_streamlit"],          # F Code streamlit
+            commentaire,                  # G Commentaire
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # H Timestamp
         ])
 
     st.success("✅ Indisponibilités enregistrées")
