@@ -109,12 +109,12 @@ for r in user_rows:
 if codes_sheet:
     msg = (
         "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>"
-        "Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement."
+        "Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement.<br>"
     )
     if dernier_timestamp:
-        msg += f"\nDernière modification effectuée le : {dernier_timestamp}"
-    st.info(msg)
+        msg += f"Dernière modification effectuée le : {dernier_timestamp}"
     st.markdown(msg, unsafe_allow_html=True)
+
 # ======================
 # CHARGEMENT STREAMLIT (DEDUP)
 # ======================
