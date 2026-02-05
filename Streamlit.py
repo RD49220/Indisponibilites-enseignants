@@ -59,6 +59,9 @@ for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
 if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
 
+if "commentaire" not in st.session_state:
+    st.session_state.commentaire = ""
+
 # ======================
 # UI
 # ======================
@@ -83,6 +86,7 @@ if st.session_state.selected_user != user_code:
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
+    st.session_state.commentaire = ""  # <-- RESET commentaire
 
 # ======================
 # LECTURE GOOGLE SHEET
@@ -226,7 +230,11 @@ st.divider()
 # ======================
 # COMMENTAIRE
 # ======================
-commentaire = st.text_area("💬 Commentaire", value=commentaire_existant)
+commentaire = st.text_area(
+    "💬 Commentaire",
+    value=st.session_state.get("commentaire", commentaire_existant),
+    key="commentaire"
+)
 
 # ======================
 # ENREGISTREMENT
@@ -254,7 +262,7 @@ if st.button("💾 Enregistrer"):
             p["creneau"],
             code_cr,
             f"{user_code}_{code_cr}_P",
-            commentaire,
+            st.session_state.commentaire,  # <-- utilise la valeur du session_state
             now
         ])
 
