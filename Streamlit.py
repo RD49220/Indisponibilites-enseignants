@@ -74,12 +74,10 @@ options = {
 selected_label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[selected_label]
 
-# reset si changement d’enseignant
+# Reset si changement d’enseignant
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
-
-    # 🔹 RESET DES MENUS DÉROULANTS PONCTUELS
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
@@ -90,55 +88,23 @@ if st.session_state.selected_user != user_code:
 all_data = sheet.get_all_values()
 user_rows = [r for r in all_data[1:] if r[0] == user_code]
 
-existing_codes = {r[5] for r in user_rows if len(r) > 5}
-
-# 🔹 FIX : accéder correctement à la colonne Commentaire
+# Accéder correctement à la colonne Commentaire
 existing_comment = user_rows[0][6] if user_rows and len(user_rows[0]) > 6 else ""
 
-# 🔹 Charger les créneaux ponctuels existants pour cet enseignant
-st.session_state.ponctuels = []
-for r in user_rows:
-    if len(r) > 5 and r[5].endswith("_P"):  # Créneaux ponctuels identifiés par _P
-        st.session_state.ponctuels.append({
-            "semaine": r[1],
-            "jour": r[2],
-            "creneau": r[3]
-        })
+# Charger les créneaux ponctuels existants pour cet enseignant
+st.session_state.ponctuels = [
+    {"semaine": r[1], "jour": r[2], "creneau": r[3]}
+    for r in user_rows
+    if len(r) > 5 and r[5].endswith("_P")
+]
 
 st.divider()
 
 # ======================
-# CRÉNEAUX RÉGULIERS
-# ======================
-selections = []
-
-for jour, j_code in JOURS.items():
-    st.subheader(jour)
-    cols = st.columns(3)
-    i = 0
-
-    for num, label in CRENEAUX.items():
-        code_cr = f"{j_code}_{num}"
-        code_streamlit = f"{user_code}_{code_cr}_R"
-        checked = code_streamlit in existing_codes
-
-        if cols[i % 3].checkbox(label, value=checked, key=code_streamlit):
-            selections.append({
-                "semaine": "ALL_SI",
-                "jour": jour,
-                "creneau": label,
-                "code_cr": code_cr,
-                "code_streamlit": code_streamlit
-            })
-        i += 1
-
-st.divider()
-
-# ======================
-# CRÉNEAUX PONCTUELS (FORM)
+# CRÉNEAUX PONCTUELS (FORMULAIRE)
 # ======================
 with st.form("ponctuel_form"):
-    st.subheader("➕ Créneaux ponctuels")
+    st.subheader("➕ Ajouter un créneau ponctuel")
 
     semaines = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
     jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
@@ -157,7 +123,7 @@ with st.form("ponctuel_form"):
                     })
 
 # ======================
-# TABLEAU PONCTUELS
+# TABLEAU DES CRÉNEAUX PONCTUELS
 # ======================
 if st.session_state.ponctuels:
     st.subheader("📝 Créneaux ponctuels ajoutés")
@@ -192,34 +158,21 @@ commentaire = st.text_area("💬 Commentaire", value=existing_comment)
 # ENREGISTREMENT
 # ======================
 if st.button("💾 Enregistrer"):
-    if not selections and not st.session_state.ponctuels:
-        st.warning("Aucune indisponibilité sélectionnée.")
+    if not st.session_state.ponctuels:
+        st.warning("Aucun créneau ponctuel sélectionné.")
         st.stop()
 
+    # Supprimer les anciennes lignes de cet enseignant
     rows_to_delete = [
         i for i, r in enumerate(all_data[1:], start=2)
         if r[0] == user_code
     ]
-
     for i in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(i)
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # RÉGULIERS
-    for s in selections:
-        sheet.append_row([
-            user_code,            # A
-            s["semaine"],         # B
-            s["jour"],            # C
-            s["creneau"],         # D
-            s["code_cr"],         # E
-            s["code_streamlit"],  # F
-            commentaire,          # G
-            now                   # H
-        ])
-
-    # PONCTUELS
+    # Enregistrer les créneaux ponctuels
     for p in st.session_state.ponctuels:
         j_code = JOURS[p["jour"]]
         num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
@@ -236,4 +189,4 @@ if st.button("💾 Enregistrer"):
             now                                   # H
         ])
 
-    st.success("✅ Indisponibilités enregistrées")
+    st.success("✅ Créneaux ponctuels enregistrés")
