@@ -103,9 +103,9 @@ for r in user_rows:
     if len(r) > 5 and r[5].endswith("_P"):
         codes_sheet.add(r[5])
         commentaire_existant = r[6] if len(r) > 6 else ""
-    if len(r) > 7 and r[7]:
-        if dernier_timestamp is None or r[7] > dernier_timestamp:
-            dernier_timestamp = r[7]
+    if len(r) > 8 and r[8]:
+        if dernier_timestamp is None or r[8] > dernier_timestamp:
+            dernier_timestamp = r[8]
 
 # ======================
 # MESSAGE SI CRÉNEAUX EXISTANTS
@@ -209,21 +209,21 @@ st.subheader("📝 Créneaux ajoutés")
 if st.session_state.ponctuels:
     delete_id = None
 
-    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 0.5, 3])
+    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 3, 0.5])
     h1.markdown("**Semaine**")
     h2.markdown("**Jour**")
     h3.markdown("**Créneau**")
-    h4.markdown("**🗑️**")
-    h5.markdown("**Raison/Commentaire**")
+    h4.markdown("**Raison/Commentaire**")
+    h5.markdown("**🗑️**")
 
     for r in st.session_state.ponctuels:
-        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 0.5, 3])
+        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
         c1.write(r["semaine"] or "-")
         c2.write(r["jour"] or "-")
         c3.write(r["creneau"] or "-")
-        c5.write(r.get("raison", "") or "-")
+        c4.write(r.get("raison", "") or "-")
 
-        if c4.button("🗑️", key=f"del_{r['id']}"):
+        if c5.button("🗑️", key=f"del_{r['id']}"):
             delete_id = r["id"]
 
     if delete_id:
@@ -277,8 +277,9 @@ if st.button("💾 Enregistrer"):
                 p["creneau"],
                 code_cr,
                 code_streamlit,
-                p.get("raison", st.session_state.commentaire),
-                now
+                commentaire,      # colonne 8 → commentaire global
+                now,              # colonne 9 → timestamp
+                p.get("raison", "")  # Optionnel: on peut stocker raison ici si souhaité
             ])
     else:  # aucun créneau du tout
         sheet.append_row([
@@ -288,8 +289,9 @@ if st.button("💾 Enregistrer"):
             "",  # créneau vide
             "",  # code_cr vide
             f"{user_code}_0_P",  # code_streamlit par défaut
-            st.session_state.commentaire,
-            now
+            commentaire,  # colonne 8 → commentaire global
+            now,          # colonne 9 → timestamp
+            ""            # raison vide
         ])
 
     st.success("✅ Indisponibilités enregistrées")
