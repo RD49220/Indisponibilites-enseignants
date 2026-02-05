@@ -109,8 +109,7 @@ for jour, j_code in JOURS.items():
                 "jour": jour,
                 "creneau": label,
                 "code_cr": f"{j_code}_{num}",
-                "code_streamlit": code_streamlit,
-                "semaine": ""
+                "code_streamlit": code_streamlit
             })
         i += 1
 
@@ -122,20 +121,9 @@ st.divider()
 with st.form("ponctuel_form"):
     st.subheader("➕ Créneaux ponctuels")
 
-    semaines = st.multiselect(
-        "Semaine(s)",
-        list(range(1, 53))
-    )
-
-    jours_sel = st.multiselect(
-        "Jour(s)",
-        list(JOURS.keys())
-    )
-
-    creneaux_sel = st.multiselect(
-        "Créneau(x)",
-        list(CRENEAUX.values())
-    )
+    semaines = st.multiselect("Semaine(s)", list(range(1, 53)))
+    jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()))
+    creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()))
 
     ajouter = st.form_submit_button("➕ Ajouter")
 
@@ -198,29 +186,30 @@ if st.button("💾 Enregistrer"):
     for i in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(i)
 
-    # réguliers
+    # CRÉNEAUX RÉGULIERS — ORDRE STRICT
     for s in selections:
         sheet.append_row([
-            user_code,
-            s["jour"],
-            s["creneau"],
-            s["code_cr"],
-            commentaire,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            s["code_streamlit"]
+            user_code,                              # A Code enseignant
+            s["jour"],                              # B Jour
+            s["creneau"],                           # C Créneau
+            s["code_cr"],                           # D Code créneau
+            commentaire,                            # E Commentaire
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # F Timestamp
+            s["code_streamlit"],                    # G Code streamlit
+            ""                                      # H Semaine
         ])
 
-    # ponctuels
+    # CRÉNEAUX PONCTUELS — ORDRE STRICT
     for p in st.session_state.ponctuels:
         sheet.append_row([
-            user_code,
-            p["Jour"],
-            p["Créneau"],
-            "PONCTUEL",
-            commentaire,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            f"{user_code}_{p['Jour']}_{p['Créneau']}",
-            p["Semaine"]
+            user_code,                              # A Code enseignant
+            p["Jour"],                              # B Jour
+            p["Créneau"],                           # C Créneau
+            "PONCTUEL",                             # D Code créneau
+            commentaire,                            # E Commentaire
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # F Timestamp
+            f"{user_code}_{p['Jour']}_{p['Créneau']}",    # G Code streamlit
+            p["Semaine"]                            # H Semaine
         ])
 
     st.success("✅ Indisponibilités enregistrées")
