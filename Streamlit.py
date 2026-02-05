@@ -198,9 +198,9 @@ st.divider()
 # ======================
 # TABLEAU + SUPPRESSION
 # ======================
-if st.session_state.ponctuels:
-    st.subheader("📝 Créneaux ajoutés")
+st.subheader("📝 Créneaux ajoutés")
 
+if st.session_state.ponctuels:
     delete_id = None
 
     h1, h2, h3, h4 = st.columns([1, 2, 2, 0.5])
@@ -211,9 +211,9 @@ if st.session_state.ponctuels:
 
     for r in st.session_state.ponctuels:
         c1, c2, c3, c4 = st.columns([1, 2, 2, 0.5])
-        c1.write(r["semaine"])
-        c2.write(r["jour"])
-        c3.write(r["creneau"])
+        c1.write(r["semaine"] or "-")
+        c2.write(r["jour"] or "-")
+        c3.write(r["creneau"] or "-")
 
         if c4.button("🗑️", key=f"del_{r['id']}"):
             delete_id = r["id"]
@@ -223,6 +223,8 @@ if st.session_state.ponctuels:
             r for r in st.session_state.ponctuels if r["id"] != delete_id
         ]
         st.rerun()
+else:
+    st.write("Aucune indisponibilité enregistrée.")
 
 st.divider()
 
@@ -277,7 +279,7 @@ if st.button("💾 Enregistrer"):
             "",  # jour vide
             "",  # créneau vide
             "",  # code_cr vide
-            f"{user_code}_AAA_0_P",  # code_streamlit par défaut
+            f"{user_code}_0_P",  # code_streamlit par défaut
             st.session_state.commentaire,
             now
         ])
