@@ -250,19 +250,31 @@ if st.button("💾 Enregistrer"):
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    for p in st.session_state.ponctuels:
-        j_code = JOURS[p["jour"]]
-        num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
-        code_cr = f"{j_code}_{num}"
+    if st.session_state.ponctuels:
+        for p in st.session_state.ponctuels:
+            j_code = JOURS[p["jour"]]
+            num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
+            code_cr = f"{j_code}_{num}"
 
+            sheet.append_row([
+                user_code,
+                p["semaine"],
+                p["jour"],
+                p["creneau"],
+                code_cr,
+                f"{user_code}_{code_cr}_P",
+                st.session_state.commentaire,
+                now
+            ])
+    else:  # aucun créneau, on écrit une ligne “vide” mais avec user_code, commentaire et timestamp
         sheet.append_row([
             user_code,
-            p["semaine"],
-            p["jour"],
-            p["creneau"],
-            code_cr,
-            f"{user_code}_{code_cr}_P",
-            st.session_state.commentaire,  # <-- utilise la valeur du session_state
+            "",     # semaine vide
+            "",     # jour vide
+            "",     # créneau vide
+            "",     # code_cr vide
+            f"{user_code}_0_P",  # code_streamlit par défaut
+            st.session_state.commentaire,
             now
         ])
 
