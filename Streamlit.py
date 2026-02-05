@@ -99,7 +99,7 @@ if not st.session_state.ponctuels:
 st.divider()
 
 # ======================
-# AJOUT CRÉNEAUX
+# AJOUT CRÉNEAUX (ANTI-DOUBLONS)
 # ======================
 st.subheader("➕ Créneaux ponctuels")
 
@@ -108,15 +108,30 @@ jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
 creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
 
 if st.button("➕ Ajouter"):
+    doublon_detecte = False
+
     for s in semaines:
         for j in jours_sel:
             for c in creneaux_sel:
-                st.session_state.ponctuels.append({
-                    "id": str(uuid.uuid4()),
-                    "semaine": s,
-                    "jour": j,
-                    "creneau": c
-                })
+                existe = any(
+                    p["semaine"] == s and
+                    p["jour"] == j and
+                    p["creneau"] == c
+                    for p in st.session_state.ponctuels
+                )
+
+                if existe:
+                    doublon_detecte = True
+                else:
+                    st.session_state.ponctuels.append({
+                        "id": str(uuid.uuid4()),
+                        "semaine": s,
+                        "jour": j,
+                        "creneau": c
+                    })
+
+    if doublon_detecte:
+        st.warning("⚠️ Un ou plusieurs créneaux étaient déjà ajoutés et ont été ignorés.")
 
 st.divider()
 
@@ -143,7 +158,6 @@ if st.session_state.ponctuels:
         if c4.button("🗑️", key=f"del_{row['id']}"):
             id_to_delete = row["id"]
 
-    # 🔥 SUPPRESSION + RERUN IMMÉDIAT
     if id_to_delete:
         st.session_state.ponctuels = [
             r for r in st.session_state.ponctuels if r["id"] != id_to_delete
