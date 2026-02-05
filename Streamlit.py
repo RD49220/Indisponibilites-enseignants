@@ -71,7 +71,9 @@ options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users
 selected_label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[selected_label]
 
+# ======================
 # RESET SI CHANGEMENT ENSEIGNANT
+# ======================
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
@@ -80,21 +82,27 @@ if st.session_state.selected_user != user_code:
     st.session_state.creneaux_sel = []
 
 # ======================
-# CHARGEMENT EXISTANT
+# CHARGEMENT + DÉDUPLICATION GOOGLE SHEET
 # ======================
 all_data = sheet.get_all_values()
 user_rows = [r for r in all_data[1:] if r[0] == user_code]
 existing_comment = user_rows[0][6] if user_rows and len(user_rows[0]) > 6 else ""
 
 if not st.session_state.ponctuels:
+    deja_vus = set()  # (semaine, jour, créneau)
+
     for r in user_rows:
         if len(r) > 5 and r[5].endswith("_P"):
-            st.session_state.ponctuels.append({
-                "id": str(uuid.uuid4()),
-                "semaine": r[1],
-                "jour": r[2],
-                "creneau": r[3]
-            })
+            key = (r[1], r[2], r[3])
+
+            if key not in deja_vus:
+                deja_vus.add(key)
+                st.session_state.ponctuels.append({
+                    "id": str(uuid.uuid4()),
+                    "semaine": r[1],
+                    "jour": r[2],
+                    "creneau": r[3]
+                })
 
 st.divider()
 
@@ -131,7 +139,7 @@ if st.button("➕ Ajouter"):
                     })
 
     if doublon_detecte:
-        st.warning("⚠️ Un ou plusieurs créneaux étaient déjà ajoutés et ont été ignorés.")
+        st.warning("⚠️ Un ou plusieurs créneaux existaient déjà et ont été ignorés.")
 
 st.divider()
 
