@@ -56,6 +56,9 @@ for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
     if k not in st.session_state:
         st.session_state[k] = []
 
+if "_warning_doublon" not in st.session_state:
+    st.session_state._warning_doublon = False
+
 # ======================
 # UI
 # ======================
@@ -100,7 +103,6 @@ for r in user_rows:
 # ======================
 if not st.session_state.ponctuels:
     deja_vus = set()
-
     for r in user_rows:
         if len(r) > 5 and r[5].endswith("_P"):
             key = (r[1], r[2], r[3])
@@ -116,16 +118,14 @@ if not st.session_state.ponctuels:
 st.divider()
 
 # ======================
-# AJOUT (AVEC RESET DES LISTES)
+# FONCTION AJOUT AVEC RESET LISTES
 # ======================
-st.subheader("➕ Créneaux ponctuels")
-
-semaines = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
-jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
-creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
-
-if st.button("➕ Ajouter"):
+def ajouter_creneaux(codes_sheet, user_code):
     doublon = False
+
+    semaines = st.session_state.semaines_sel
+    jours_sel = st.session_state.jours_sel
+    creneaux_sel = st.session_state.creneaux_sel
 
     for s in semaines:
         for j in jours_sel:
@@ -151,15 +151,27 @@ if st.button("➕ Ajouter"):
                         "creneau": c
                     })
 
-    # 🔥 RESET DES LISTES DÉROULANTES
+    # 🔹 RESET DES LISTES DÉROULANTES
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
 
-    if doublon:
-        st.warning("⚠️ Certains créneaux existaient déjà et n'ont pas été ajoutés.")
+    st.session_state._warning_doublon = doublon
 
-    st.rerun()
+# ======================
+# AJOUT (BOUTON)
+# ======================
+st.subheader("➕ Créneaux ponctuels")
+
+st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
+st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
+st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
+
+st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
+
+if st.session_state._warning_doublon:
+    st.warning("⚠️ Certains créneaux existaient déjà et n'ont pas été ajoutés.")
+    st.session_state._warning_doublon = False
 
 st.divider()
 
