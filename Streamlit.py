@@ -29,15 +29,15 @@ CRENEAUX = {
 }
 
 # ======================
-# AUTH GOOGLE SHEETS
+# AUTH GOOGLE
 # ======================
-creds_dict = st.secrets["gcp_service_account"]
-scopes = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
-
-creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=[
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+)
 client = gspread.authorize(creds)
 
 sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
@@ -52,9 +52,9 @@ if "ponctuels" not in st.session_state:
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = None
 
-for key in ["semaines_sel", "jours_sel", "creneaux_sel"]:
-    if key not in st.session_state:
-        st.session_state[key] = []
+for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
+    if k not in st.session_state:
+        st.session_state[k] = []
 
 # ======================
 # UI
@@ -68,8 +68,8 @@ users_data = users_sheet.get_all_values()[1:]
 users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in users_data if len(r) >= 3]
 
 options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
-selected_label = st.selectbox("Choisissez votre nom", options.keys())
-user_code = options[selected_label]
+label = st.selectbox("Choisissez votre nom", options.keys())
+user_code = options[label]
 
 # ======================
 # RESET SI CHANGEMENT ENSEIGNANT
@@ -82,19 +82,28 @@ if st.session_state.selected_user != user_code:
     st.session_state.creneaux_sel = []
 
 # ======================
-# CHARGEMENT + DÉDUPLICATION GOOGLE SHEET
+# LECTURE GOOGLE SHEET
 # ======================
 all_data = sheet.get_all_values()
 user_rows = [r for r in all_data[1:] if r[0] == user_code]
-existing_comment = user_rows[0][6] if user_rows and len(user_rows[0]) > 6 else ""
 
+codes_sheet = set()
+commentaire_existant = ""
+
+for r in user_rows:
+    if len(r) > 5 and r[5].endswith("_P"):
+        codes_sheet.add(r[5])
+        commentaire_existant = r[6] if len(r) > 6 else ""
+
+# ======================
+# CHARGEMENT STREAMLIT (DEDUP)
+# ======================
 if not st.session_state.ponctuels:
-    deja_vus = set()  # (semaine, jour, créneau)
+    deja_vus = set()
 
     for r in user_rows:
         if len(r) > 5 and r[5].endswith("_P"):
             key = (r[1], r[2], r[3])
-
             if key not in deja_vus:
                 deja_vus.add(key)
                 st.session_state.ponctuels.append({
@@ -107,7 +116,7 @@ if not st.session_state.ponctuels:
 st.divider()
 
 # ======================
-# AJOUT CRÉNEAUX (ANTI-DOUBLONS)
+# AJOUT (COMPARAISON STREAMLIT + SHEET)
 # ======================
 st.subheader("➕ Créneaux ponctuels")
 
@@ -116,20 +125,24 @@ jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
 creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
 
 if st.button("➕ Ajouter"):
-    doublon_detecte = False
+    doublon = False
 
     for s in semaines:
         for j in jours_sel:
             for c in creneaux_sel:
-                existe = any(
-                    p["semaine"] == s and
-                    p["jour"] == j and
-                    p["creneau"] == c
+                jour_code = JOURS[j]
+                num = [k for k, v in CRENEAUX.items() if v == c][0]
+                code = f"{user_code}_{jour_code}_{num}_P"
+
+                existe_streamlit = any(
+                    p["semaine"] == s and p["jour"] == j and p["creneau"] == c
                     for p in st.session_state.ponctuels
                 )
 
-                if existe:
-                    doublon_detecte = True
+                existe_sheet = code in codes_sheet
+
+                if existe_streamlit or existe_sheet:
+                    doublon = True
                 else:
                     st.session_state.ponctuels.append({
                         "id": str(uuid.uuid4()),
@@ -138,18 +151,18 @@ if st.button("➕ Ajouter"):
                         "creneau": c
                     })
 
-    if doublon_detecte:
-        st.warning("⚠️ Un ou plusieurs créneaux existaient déjà et ont été ignorés.")
+    if doublon:
+        st.warning("⚠️ Certains créneaux existaient déjà (tableau ou Google Sheet) et n'ont pas été ajoutés.")
 
 st.divider()
 
 # ======================
-# TABLEAU + SUPPRESSION (1 CLIC)
+# TABLEAU + SUPPRESSION
 # ======================
 if st.session_state.ponctuels:
-    st.subheader("📝 Créneaux ponctuels ajoutés")
+    st.subheader("📝 Créneaux ajoutés")
 
-    id_to_delete = None
+    delete_id = None
 
     h1, h2, h3, h4 = st.columns([1, 2, 2, 0.5])
     h1.markdown("**Semaine**")
@@ -157,18 +170,18 @@ if st.session_state.ponctuels:
     h3.markdown("**Créneau**")
     h4.markdown("**🗑️**")
 
-    for row in st.session_state.ponctuels:
+    for r in st.session_state.ponctuels:
         c1, c2, c3, c4 = st.columns([1, 2, 2, 0.5])
-        c1.write(row["semaine"])
-        c2.write(row["jour"])
-        c3.write(row["creneau"])
+        c1.write(r["semaine"])
+        c2.write(r["jour"])
+        c3.write(r["creneau"])
 
-        if c4.button("🗑️", key=f"del_{row['id']}"):
-            id_to_delete = row["id"]
+        if c4.button("🗑️", key=f"del_{r['id']}"):
+            delete_id = r["id"]
 
-    if id_to_delete:
+    if delete_id:
         st.session_state.ponctuels = [
-            r for r in st.session_state.ponctuels if r["id"] != id_to_delete
+            r for r in st.session_state.ponctuels if r["id"] != delete_id
         ]
         st.rerun()
 
@@ -177,16 +190,12 @@ st.divider()
 # ======================
 # COMMENTAIRE
 # ======================
-commentaire = st.text_area("💬 Commentaire", value=existing_comment)
+commentaire = st.text_area("💬 Commentaire", value=commentaire_existant)
 
 # ======================
 # ENREGISTREMENT
 # ======================
 if st.button("💾 Enregistrer"):
-    if not st.session_state.ponctuels:
-        st.warning("Aucun créneau ponctuel sélectionné.")
-        st.stop()
-
     rows_to_delete = [
         i for i, r in enumerate(all_data[1:], start=2)
         if r[0] == user_code
