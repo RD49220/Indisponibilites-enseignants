@@ -54,7 +54,7 @@ if "selected_user" not in st.session_state:
 
 for k in ["semaines_sel", "jours_sel", "creneaux_sel", "raison_sel"]:
     if k not in st.session_state:
-        st.session_state[k] = []
+        st.session_state[k] = "" if k == "raison_sel" else []
 
 if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
@@ -86,7 +86,7 @@ if st.session_state.selected_user != user_code:
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
-    st.session_state.raison_sel = []
+    st.session_state.raison_sel = ""
     st.session_state.commentaire = ""  # RESET commentaire global
 
 # ======================
@@ -148,15 +148,11 @@ def ajouter_creneaux(codes_sheet, user_code):
     semaines = st.session_state.semaines_sel
     jours_sel = st.session_state.jours_sel
     creneaux_sel = st.session_state.creneaux_sel
-    raison_sel = st.session_state.raison_sel
+    raison_texte = st.session_state.raison_sel
 
     for s in semaines:
         for j in jours_sel:
-            for idx_c, c in enumerate(creneaux_sel):
-                raison_texte = ""
-                if idx_c < len(raison_sel):
-                    raison_texte = raison_sel[idx_c]
-
+            for c in creneaux_sel:
                 jour_code = JOURS[j]
                 num = [k for k, v in CRENEAUX.items() if v == c][0]
                 code = f"{user_code}_{jour_code}_{num}_P"
@@ -183,7 +179,7 @@ def ajouter_creneaux(codes_sheet, user_code):
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
-    st.session_state.raison_sel = []
+    st.session_state.raison_sel = ""
 
     st.session_state._warning_doublon = doublon
 
@@ -195,7 +191,7 @@ st.subheader("➕ Créneaux ponctuels")
 st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
 st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
 st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
-st.text_area("Raisons/Commentaires", key="raison_sel", height=80)
+st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=st.session_state.get("raison_sel", ""))
 
 st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
 
