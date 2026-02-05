@@ -108,7 +108,7 @@ for r in user_rows:
 # ======================
 if codes_sheet:
     msg = (
-        "⚠️ Des indisponibilités sont déjà enregistrées pour vous.\n"
+        "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>"
         "Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement."
     )
     if dernier_timestamp:
