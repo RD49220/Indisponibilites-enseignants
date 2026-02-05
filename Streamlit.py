@@ -40,8 +40,12 @@ scopes = [
 creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 client = gspread.authorize(creds)
 
-sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+try:
+    sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
+    users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+except gspread.exceptions.APIError:
+    st.error("Impossible d'accéder à la feuille Google Sheets. Réessayez plus tard.")
+    st.stop()
 
 # ======================
 # SESSION STATE
@@ -52,6 +56,11 @@ if "ponctuels" not in st.session_state:
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = None
 
+# Clés pour multiselect
+for key in ["semaines_sel", "jours_sel", "creneaux_sel"]:
+    if key not in st.session_state:
+        st.session_state[key] = []
+
 # ======================
 # UI
 # ======================
@@ -60,31 +69,42 @@ st.title("📅 Indisponibilités enseignants")
 # ======================
 # CHARGER UTILISATEURS
 # ======================
-users_data = users_sheet.get_all_values()[1:]
+try:
+    users_data = users_sheet.get_all_values()[1:]
+except gspread.exceptions.APIError:
+    st.error("Impossible de lire les utilisateurs depuis Google Sheets.")
+    st.stop()
+
 users = [
     {"code": r[0], "nom": r[1], "prenom": r[2]}
     for r in users_data if len(r) >= 3
 ]
 
-options = {
-    f"{u['code']} – {u['nom']} {u['prenom']}": u["code"]
-    for u in users
-}
+options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
 selected_label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[selected_label]
 
-# Reset si changement d’enseignant
+# ======================
+# RESET SI CHANGEMENT UTILISATEUR
+# ======================
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
+    st.session_state["semaines_sel"] = []
+    st.session_state["jours_sel"] = []
+    st.session_state["creneaux_sel"] = []
 
 # ======================
 # LECTURE DONNÉES EXISTANTES
 # ======================
-all_data = sheet.get_all_values()
-user_rows = [r for r in all_data[1:] if r[0] == user_code]
+try:
+    all_data = sheet.get_all_values()
+except gspread.exceptions.APIError:
+    st.error("Impossible de lire les créneaux depuis Google Sheets.")
+    st.stop()
 
+user_rows = [r for r in all_data[1:] if r[0] == user_code]
 existing_comment = user_rows[0][6] if user_rows and len(user_rows[0]) > 6 else ""
 
 # Charger les créneaux ponctuels existants
@@ -100,14 +120,15 @@ st.divider()
 # FORMULAIRE AJOUT
 # ======================
 st.subheader("➕ Ajouter un créneau ponctuel")
-semaines_sel = st.multiselect("Semaine(s)", list(range(1, 53)))
-jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()))
-creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()))
+semaines_sel = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
+jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
+creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
 
 if st.button("➕ Ajouter"):
     if not semaines_sel or not jours_sel or not creneaux_sel:
         st.warning("Veuillez sélectionner au moins une semaine, un jour et un créneau.")
     else:
+        added = 0
         for s in semaines_sel:
             for j in jours_sel:
                 for c in creneaux_sel:
@@ -118,7 +139,11 @@ if st.button("➕ Ajouter"):
                             "jour": j,
                             "creneau": c
                         })
-        st.success("Créneaux ajoutés !")
+                        added += 1
+        if added > 0:
+            st.success(f"{added} créneau(x) ajouté(s).")
+        else:
+            st.info("Tous les créneaux sélectionnés étaient déjà dans la liste.")
 
 # ======================
 # TABLEAU PONCTUELS
@@ -130,10 +155,11 @@ if st.session_state.ponctuels:
         cols[0].write(row["semaine"])
         cols[1].write(row["jour"])
         cols[2].write(row["creneau"])
-        # Supprimer un créneau
-        if cols[3].button("🗑️", key=f"del_{idx}"):
+        # Supprimer un créneau avec clé stable
+        key_btn = f"{row['semaine']}_{row['jour']}_{row['creneau']}"
+        if cols[3].button("🗑️", key=f"del_{key_btn}"):
             st.session_state.ponctuels.pop(idx)
-            break  # stoppe la boucle pour éviter conflits de clés
+            st.experimental_rerun()  # Rafraîchit immédiatement le tableau
 
 st.divider()
 
@@ -153,7 +179,11 @@ if st.button("💾 Enregistrer"):
     # Supprimer les anciennes lignes de l'utilisateur
     rows_to_delete = [i for i, r in enumerate(all_data[1:], start=2) if r[0] == user_code]
     for i in sorted(rows_to_delete, reverse=True):
-        sheet.delete_rows(i)
+        try:
+            sheet.delete_rows(i)
+        except gspread.exceptions.APIError:
+            st.error("Erreur lors de la suppression des anciennes lignes.")
+            st.stop()
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -162,15 +192,19 @@ if st.button("💾 Enregistrer"):
         j_code = JOURS[p["jour"]]
         num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
         code_cr = f"{j_code}_{num}"
-        sheet.append_row([
-            user_code,            # A
-            p["semaine"],         # B
-            p["jour"],            # C
-            p["creneau"],         # D
-            code_cr,              # E
-            f"{user_code}_{code_cr}_P", # F
-            commentaire,          # G
-            now                   # H
-        ])
+        try:
+            sheet.append_row([
+                user_code,
+                p["semaine"],
+                p["jour"],
+                p["creneau"],
+                code_cr,
+                f"{user_code}_{code_cr}_P",
+                commentaire,
+                now
+            ])
+        except gspread.exceptions.APIError:
+            st.error("Erreur lors de l'enregistrement des créneaux.")
+            st.stop()
 
     st.success("✅ Créneaux ponctuels enregistrés")
