@@ -79,6 +79,11 @@ if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
 
+    # 🔹 RESET DES MENUS DÉROULANTS PONCTUELS
+    st.session_state.semaines_sel = []
+    st.session_state.jours_sel = []
+    st.session_state.creneaux_sel = []
+
 # ======================
 # LECTURE DONNÉES EXISTANTES
 # ======================
@@ -123,9 +128,9 @@ st.divider()
 with st.form("ponctuel_form"):
     st.subheader("➕ Créneaux ponctuels")
 
-    semaines = st.multiselect("Semaine(s)", list(range(1, 53)))
-    jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()))
-    creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()))
+    semaines = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
+    jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
+    creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
 
     ajouter = st.form_submit_button("➕ Ajouter")
 
