@@ -150,16 +150,20 @@ if st.button("➕ Ajouter"):
 # ======================
 if st.session_state.ponctuels:
     st.subheader("📝 Créneaux ponctuels ajoutés")
-    for idx, row in enumerate(st.session_state.ponctuels):
+
+    to_keep = []
+    for row in st.session_state.ponctuels:
         cols = st.columns([1, 2, 2, 0.5])
         cols[0].write(row["semaine"])
         cols[1].write(row["jour"])
         cols[2].write(row["creneau"])
-        # Supprimer un créneau avec clé stable
         key_btn = f"{row['semaine']}_{row['jour']}_{row['creneau']}"
         if cols[3].button("🗑️", key=f"del_{key_btn}"):
-            st.session_state.ponctuels.pop(idx)
-            st.experimental_rerun()  # Rafraîchit immédiatement le tableau
+            continue  # on saute cette ligne = suppression
+        else:
+            to_keep.append(row)
+
+    st.session_state.ponctuels = to_keep  # on remplace la liste par les lignes restantes
 
 st.divider()
 
