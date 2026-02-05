@@ -209,7 +209,7 @@ st.subheader("📝 Créneaux ajoutés")
 if st.session_state.ponctuels:
     delete_id = None
 
-    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 3, 0.5])
+    h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 2, 0.5])
     h1.markdown("**Semaine**")
     h2.markdown("**Jour**")
     h3.markdown("**Créneau**")
@@ -217,7 +217,7 @@ if st.session_state.ponctuels:
     h5.markdown("**🗑️**")
 
     for r in st.session_state.ponctuels:
-        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
+        c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 2, 0.5])
         c1.write(r["semaine"] or "-")
         c2.write(r["jour"] or "-")
         c3.write(r["creneau"] or "-")
