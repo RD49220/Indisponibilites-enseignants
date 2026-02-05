@@ -143,11 +143,12 @@ if st.session_state.ponctuels:
         if c4.button("🗑️", key=f"del_{row['id']}"):
             id_to_delete = row["id"]
 
-    # ✅ SUPPRESSION HORS BOUCLE (clé du succès)
+    # 🔥 SUPPRESSION + RERUN IMMÉDIAT
     if id_to_delete:
         st.session_state.ponctuels = [
             r for r in st.session_state.ponctuels if r["id"] != id_to_delete
         ]
+        st.rerun()
 
 st.divider()
 
