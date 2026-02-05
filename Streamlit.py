@@ -78,9 +78,6 @@ user_code = options[selected_label]
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
-    st.session_state.semaines_sel = []
-    st.session_state.jours_sel = []
-    st.session_state.creneaux_sel = []
 
 # ======================
 # LECTURE DONNÉES EXISTANTES
@@ -101,33 +98,36 @@ st.session_state.ponctuels = [
 st.divider()
 
 # ======================
-# CRÉNEAUX PONCTUELS (FORMULAIRE)
+# FORMULAIRE POUR PONCTUELS
 # ======================
-with st.form("ponctuel_form"):
-    st.subheader("➕ Ajouter un créneau ponctuel")
+st.subheader("➕ Ajouter un créneau ponctuel")
 
-    semaines = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
-    jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
-    creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
+semaines_sel = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
+jours_sel = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
+creneaux_sel = st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
 
-    ajouter = st.form_submit_button("➕ Ajouter")
-
-    if ajouter:
-        for s in semaines:
+if st.button("➕ Ajouter"):
+    if not semaines_sel or not jours_sel or not creneaux_sel:
+        st.warning("Veuillez sélectionner au moins une semaine, un jour et un créneau.")
+    else:
+        for s in semaines_sel:
             for j in jours_sel:
                 for c in creneaux_sel:
-                    st.session_state.ponctuels.append({
-                        "semaine": s,
-                        "jour": j,
-                        "creneau": c
-                    })
+                    # Vérifier doublons
+                    if not any(p["semaine"] == s and p["jour"] == j and p["creneau"] == c 
+                               for p in st.session_state.ponctuels):
+                        st.session_state.ponctuels.append({
+                            "semaine": s,
+                            "jour": j,
+                            "creneau": c
+                        })
+        st.success("Créneaux ajoutés !")
 
 # ======================
 # TABLEAU DES CRÉNEAUX PONCTUELS
 # ======================
 if st.session_state.ponctuels:
     st.subheader("📝 Créneaux ponctuels ajoutés")
-
     h1, h2, h3, h4 = st.columns([1, 2, 2, 0.5])
     h1.markdown("**Semaine**")
     h2.markdown("**Jour**")
@@ -162,11 +162,8 @@ if st.button("💾 Enregistrer"):
         st.warning("Aucun créneau ponctuel sélectionné.")
         st.stop()
 
-    # Supprimer les anciennes lignes de cet enseignant
-    rows_to_delete = [
-        i for i, r in enumerate(all_data[1:], start=2)
-        if r[0] == user_code
-    ]
+    # Supprimer les anciennes lignes pour cet utilisateur
+    rows_to_delete = [i for i, r in enumerate(all_data[1:], start=2) if r[0] == user_code]
     for i in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(i)
 
