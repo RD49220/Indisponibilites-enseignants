@@ -114,7 +114,7 @@ if codes_sheet:
     if dernier_timestamp:
         msg += f"\nDernière modification effectuée le : {dernier_timestamp}"
     st.info(msg)
-
+    st.markdown(msg, unsafe_allow_html=True)
 # ======================
 # CHARGEMENT STREAMLIT (DEDUP)
 # ======================
