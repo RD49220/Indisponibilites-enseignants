@@ -190,7 +190,7 @@ if st.button("💾 Enregistrer"):
     for s in selections:
         sheet.append_row([
             user_code,                              # A Code enseignant
-            s[""],                                  # B Semaine
+            s["Semaine"],                           # B Semaine
             s["jour"],                              # C Jour
             s["creneau"],                           # D Créneau
             s["code_cr"],                           # E Code créneau
