@@ -52,7 +52,7 @@ if "ponctuels" not in st.session_state:
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = None
 
-for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
+for k in ["semaines_sel", "jours_sel", "creneaux_sel", "raison_sel"]:
     if k not in st.session_state:
         st.session_state[k] = []
 
@@ -86,7 +86,8 @@ if st.session_state.selected_user != user_code:
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
-    st.session_state.commentaire = ""  # <-- RESET commentaire
+    st.session_state.raison_sel = []
+    st.session_state.commentaire = ""  # RESET commentaire global
 
 # ======================
 # LECTURE GOOGLE SHEET
@@ -132,7 +133,8 @@ if not st.session_state.ponctuels:
                     "id": str(uuid.uuid4()),
                     "semaine": r[1],
                     "jour": r[2],
-                    "creneau": r[3]
+                    "creneau": r[3],
+                    "raison": r[6] if len(r) > 6 else ""
                 })
 
 st.divider()
@@ -146,10 +148,15 @@ def ajouter_creneaux(codes_sheet, user_code):
     semaines = st.session_state.semaines_sel
     jours_sel = st.session_state.jours_sel
     creneaux_sel = st.session_state.creneaux_sel
+    raison_sel = st.session_state.raison_sel
 
     for s in semaines:
         for j in jours_sel:
-            for c in creneaux_sel:
+            for idx_c, c in enumerate(creneaux_sel):
+                raison_texte = ""
+                if idx_c < len(raison_sel):
+                    raison_texte = raison_sel[idx_c]
+
                 jour_code = JOURS[j]
                 num = [k for k, v in CRENEAUX.items() if v == c][0]
                 code = f"{user_code}_{jour_code}_{num}_P"
@@ -168,13 +175,15 @@ def ajouter_creneaux(codes_sheet, user_code):
                         "id": str(uuid.uuid4()),
                         "semaine": s,
                         "jour": j,
-                        "creneau": c
+                        "creneau": c,
+                        "raison": raison_texte
                     })
 
-    # 🔹 RESET DES LISTES DÉROULANTES
+    # 🔹 RESET DES LISTES DÉROULANTES + champ raison
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
+    st.session_state.raison_sel = []
 
     st.session_state._warning_doublon = doublon
 
@@ -186,6 +195,7 @@ st.subheader("➕ Créneaux ponctuels")
 st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
 st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
 st.multiselect("Créneau(x)", list(CRENEAUX.values()), key="creneaux_sel")
+st.text_area("Raisons/Commentaires", key="raison_sel", height=80)
 
 st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
 
@@ -203,17 +213,19 @@ st.subheader("📝 Créneaux ajoutés")
 if st.session_state.ponctuels:
     delete_id = None
 
-    h1, h2, h3, h4 = st.columns([1, 2, 2, 0.5])
+    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 0.5, 3])
     h1.markdown("**Semaine**")
     h2.markdown("**Jour**")
     h3.markdown("**Créneau**")
     h4.markdown("**🗑️**")
+    h5.markdown("**Raison/Commentaire**")
 
     for r in st.session_state.ponctuels:
-        c1, c2, c3, c4 = st.columns([1, 2, 2, 0.5])
+        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 0.5, 3])
         c1.write(r["semaine"] or "-")
         c2.write(r["jour"] or "-")
         c3.write(r["creneau"] or "-")
+        c5.write(r.get("raison", "") or "-")
 
         if c4.button("🗑️", key=f"del_{r['id']}"):
             delete_id = r["id"]
@@ -229,10 +241,10 @@ else:
 st.divider()
 
 # ======================
-# COMMENTAIRE
+# COMMENTAIRE GLOBAL
 # ======================
 commentaire = st.text_area(
-    "💬 Commentaire",
+    "💬 Commentaire global",
     value=st.session_state.get("commentaire", commentaire_existant),
     key="commentaire"
 )
@@ -269,7 +281,7 @@ if st.button("💾 Enregistrer"):
                 p["creneau"],
                 code_cr,
                 code_streamlit,
-                st.session_state.commentaire,
+                p.get("raison", st.session_state.commentaire),
                 now
             ])
     else:  # aucun créneau du tout
