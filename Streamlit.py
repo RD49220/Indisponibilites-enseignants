@@ -92,20 +92,28 @@ user_rows = [r for r in all_data[1:] if r[0] == user_code]
 
 codes_sheet = set()
 commentaire_existant = ""
+dernier_timestamp = None
 
 for r in user_rows:
     if len(r) > 5 and r[5].endswith("_P"):
         codes_sheet.add(r[5])
         commentaire_existant = r[6] if len(r) > 6 else ""
+    # colonne H = 7 pour timestamp
+    if len(r) > 7 and r[7]:
+        if dernier_timestamp is None or r[7] > dernier_timestamp:
+            dernier_timestamp = r[7]
 
 # ======================
 # MESSAGE SI CRÉNEAUX EXISTANTS
 # ======================
 if codes_sheet:
-    st.info(
-        "⚠️ Des indisponibilités sont déjà enregistrées pour vous. "
-        "Toute modification (ajout ou suppression) écrasera les anciennes données lors de l'enregistrement."
+    msg = (
+        "⚠️ Des indisponibilités sont déjà enregistrées pour vous.\n"
+        "Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement."
     )
+    if dernier_timestamp:
+        msg += f"\nDernière modification effectuée le : {dernier_timestamp}"
+    st.info(msg)
 
 # ======================
 # CHARGEMENT STREAMLIT (DEDUP)
