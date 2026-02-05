@@ -102,7 +102,6 @@ for r in user_rows:
     if len(r) > 5 and r[5].endswith("_P"):
         codes_sheet.add(r[5])
         commentaire_existant = r[6] if len(r) > 6 else ""
-    # colonne H = 7 pour timestamp
     if len(r) > 7 and r[7]:
         if dernier_timestamp is None or r[7] > dernier_timestamp:
             dernier_timestamp = r[7]
@@ -252,9 +251,14 @@ if st.button("💾 Enregistrer"):
 
     if st.session_state.ponctuels:
         for p in st.session_state.ponctuels:
-            j_code = JOURS[p["jour"]]
-            num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
-            code_cr = f"{j_code}_{num}"
+            if p["jour"] and p["creneau"]:  # créneau renseigné
+                j_code = JOURS[p["jour"]]
+                num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
+                code_cr = f"{j_code}_{num}"
+                code_streamlit = f"{user_code}_{code_cr}_P"
+            else:  # ligne vide
+                code_cr = ""
+                code_streamlit = f"{user_code}_0_P"
 
             sheet.append_row([
                 user_code,
@@ -262,18 +266,18 @@ if st.button("💾 Enregistrer"):
                 p["jour"],
                 p["creneau"],
                 code_cr,
-                f"{user_code}_{code_cr}_P",
+                code_streamlit,
                 st.session_state.commentaire,
                 now
             ])
-    else:  # aucun créneau, on écrit une ligne “vide” mais avec user_code, commentaire et timestamp
+    else:  # aucun créneau du tout
         sheet.append_row([
             user_code,
-            "",     # semaine vide
-            "",     # jour vide
-            "",     # créneau vide
-            "",     # code_cr vide
-            f"{user_code}_AAA_0_P",  # code_streamlit par défaut
+            "",  # semaine vide
+            "",  # jour vide
+            "",  # créneau vide
+            "",  # code_cr vide
+            f"{user_code}_0_P",  # code_streamlit par défaut
             st.session_state.commentaire,
             now
         ])
