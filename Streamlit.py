@@ -116,7 +116,7 @@ if not st.session_state.ponctuels:
 st.divider()
 
 # ======================
-# AJOUT (COMPARAISON STREAMLIT + SHEET)
+# AJOUT (AVEC RESET DES LISTES)
 # ======================
 st.subheader("➕ Créneaux ponctuels")
 
@@ -151,8 +151,15 @@ if st.button("➕ Ajouter"):
                         "creneau": c
                     })
 
+    # 🔥 RESET DES LISTES DÉROULANTES
+    st.session_state.semaines_sel = []
+    st.session_state.jours_sel = []
+    st.session_state.creneaux_sel = []
+
     if doublon:
-        st.warning("⚠️ Certains créneaux existaient déjà (tableau ou Google Sheet) et n'ont pas été ajoutés.")
+        st.warning("⚠️ Certains créneaux existaient déjà et n'ont pas été ajoutés.")
+
+    st.rerun()
 
 st.divider()
 
