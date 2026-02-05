@@ -111,7 +111,6 @@ if st.button("➕ Ajouter"):
         for s in semaines_sel:
             for j in jours_sel:
                 for c in creneaux_sel:
-                    # Vérifier doublons
                     if not any(p["semaine"] == s and p["jour"] == j and p["creneau"] == c
                                for p in st.session_state.ponctuels):
                         st.session_state.ponctuels.append({
@@ -119,7 +118,7 @@ if st.button("➕ Ajouter"):
                             "jour": j,
                             "creneau": c
                         })
-        st.experimental_rerun()  # Force le refresh du tableau
+        st.success("Créneaux ajoutés !")
 
 # ======================
 # TABLEAU PONCTUELS
@@ -131,9 +130,10 @@ if st.session_state.ponctuels:
         cols[0].write(row["semaine"])
         cols[1].write(row["jour"])
         cols[2].write(row["creneau"])
+        # Supprimer un créneau
         if cols[3].button("🗑️", key=f"del_{idx}"):
             st.session_state.ponctuels.pop(idx)
-            st.experimental_rerun()  # Refresh après suppression
+            break  # stoppe la boucle pour éviter conflits de clés
 
 st.divider()
 
