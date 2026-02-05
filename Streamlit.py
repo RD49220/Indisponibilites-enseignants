@@ -277,7 +277,7 @@ if st.button("💾 Enregistrer"):
             "",  # jour vide
             "",  # créneau vide
             "",  # code_cr vide
-            f"{user_code}_0_P",  # code_streamlit par défaut
+            f"{user_code}_AAA_0_P",  # code_streamlit par défaut
             st.session_state.commentaire,
             now
         ])
