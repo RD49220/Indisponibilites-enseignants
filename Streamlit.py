@@ -59,6 +59,9 @@ for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
 if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
 
+if "supprimer_anciennes" not in st.session_state:
+    st.session_state.supprimer_anciennes = False
+
 # ======================
 # UI
 # ======================
@@ -83,6 +86,7 @@ if st.session_state.selected_user != user_code:
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
+    st.session_state.supprimer_anciennes = False
 
 # ======================
 # LECTURE GOOGLE SHEET
@@ -97,6 +101,16 @@ for r in user_rows:
     if len(r) > 5 and r[5].endswith("_P"):
         codes_sheet.add(r[5])
         commentaire_existant = r[6] if len(r) > 6 else ""
+
+# ======================
+# MESSAGE SI CRÉNEAUX EXISTANTS
+# ======================
+if codes_sheet:
+    st.info("⚠️ Des indisponibilités sont déjà enregistrées pour vous.")
+    st.checkbox(
+        "Supprimer les anciennes indisponibilités lors de l'enregistrement",
+        key="supprimer_anciennes"
+    )
 
 # ======================
 # CHARGEMENT STREAMLIT (DEDUP)
@@ -215,13 +229,14 @@ commentaire = st.text_area("💬 Commentaire", value=commentaire_existant)
 # ENREGISTREMENT
 # ======================
 if st.button("💾 Enregistrer"):
-    rows_to_delete = [
-        i for i, r in enumerate(all_data[1:], start=2)
-        if r[0] == user_code
-    ]
-
-    for i in sorted(rows_to_delete, reverse=True):
-        sheet.delete_rows(i)
+    # Si la case est cochée, supprimer les anciennes indisponibilités
+    if st.session_state.supprimer_anciennes:
+        rows_to_delete = [
+            i for i, r in enumerate(all_data[1:], start=2)
+            if r[0] == user_code
+        ]
+        for i in sorted(rows_to_delete, reverse=True):
+            sheet.delete_rows(i)
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
