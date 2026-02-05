@@ -91,7 +91,9 @@ all_data = sheet.get_all_values()
 user_rows = [r for r in all_data[1:] if r[0] == user_code]
 
 existing_codes = {r[5] for r in user_rows if len(r) > 5}
-existing_comment = user_rows[6] if user_rows and len(user_rows[0]) > 6 else ""
+
+# 🔹 FIX : accéder correctement à la colonne Commentaire
+existing_comment = user_rows[0][6] if user_rows and len(user_rows[0]) > 6 else ""
 
 # 🔹 Charger les créneaux ponctuels existants pour cet enseignant
 st.session_state.ponctuels = []
