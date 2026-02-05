@@ -266,20 +266,22 @@ if st.button("💾 Enregistrer"):
                 num = [k for k, v in CRENEAUX.items() if v == p["creneau"]][0]
                 code_cr = f"{j_code}_{num}"
                 code_streamlit = f"{user_code}_{code_cr}_P"
+                raison = p.get("raison", "")
             else:  # ligne vide
                 code_cr = ""
                 code_streamlit = f"{user_code}_0_P"
+                raison = "Aucune indisponibilité enregistrée."
 
             sheet.append_row([
-                user_code,
-                p["semaine"],
-                p["jour"],
-                p["creneau"],
-                code_cr,
-                code_streamlit,
-                commentaire,      # colonne 8 → commentaire global
-                now,              # colonne 9 → timestamp
-                p.get("raison", "")  # Optionnel: on peut stocker raison ici si souhaité
+                user_code,      # A
+                p.get("semaine", ""),  # B
+                p.get("jour", ""),     # C
+                p.get("creneau", ""),  # D
+                code_cr,        # E
+                code_streamlit, # F
+                raison,         # G → Raison du créneau ou message par défaut
+                st.session_state.commentaire,  # H → commentaire global
+                now             # I → timestamp
             ])
     else:  # aucun créneau du tout
         sheet.append_row([
@@ -289,9 +291,9 @@ if st.button("💾 Enregistrer"):
             "",  # créneau vide
             "",  # code_cr vide
             f"{user_code}_0_P",  # code_streamlit par défaut
-            commentaire,  # colonne 8 → commentaire global
-            now,          # colonne 9 → timestamp
-            ""            # raison vide
+            "Aucune indisponibilité enregistrée.",  # G → Raison
+            st.session_state.commentaire,           # H → commentaire global
+            now                                     # I → timestamp
         ])
 
     st.success("✅ Indisponibilités enregistrées")
