@@ -275,7 +275,7 @@ st.divider()
 st.subheader("📝 Créneaux ajoutés")
 if st.session_state.ponctuels:
     delete_id = None
-    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 3, 0.5])
+    h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 1, 1])
     h1.markdown("**Semaine**")
     h2.markdown("**Jour**")
     h3.markdown("**Créneau**")
@@ -283,7 +283,7 @@ if st.session_state.ponctuels:
     h5.markdown("**🗑️**")
 
     for r in st.session_state.ponctuels:
-        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
+        c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
         c1.write(r["semaine"] or "-")
         c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")
         c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]) or "-")  # <-- affichage complet du créneau
@@ -325,7 +325,7 @@ if st.button("💾 Enregistrer"):
                 raison = p.get("raison", "")
             else:
                 code_cr = ""
-                code_streamlit = f"{user_code}_0_P"
+                code_streamlit = f"{user_code}_AAA_0_P"
                 raison = "Aucune indisponibilité enregistrée."
             rows_to_append.append([
                 user_code,
@@ -341,7 +341,7 @@ if st.button("💾 Enregistrer"):
         st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     else:
         st.session_state.sheet.append_row([
-            user_code, "", "", "", "", f"{user_code}_0_P",
+            user_code, "", "", "", "", f"{user_code}_AAA_0_P",
             "Aucune indisponibilité enregistrée.",
             st.session_state.commentaire,
             now
