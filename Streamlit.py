@@ -68,6 +68,11 @@ SEMAINES_LABELS = {r[0]: r[1] for r in st.session_state.semaines_data if len(r) 
 SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r) >= 3}
 
 # ======================
+# Mapping code → label pour afficher les jours complets
+# ======================
+CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
+
+# ======================
 # FONCTIONS UTILITAIRES
 # ======================
 def get_creneaux_nums(selection):
@@ -275,7 +280,7 @@ if st.session_state.ponctuels:
     for r in st.session_state.ponctuels:
         c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
         c1.write(r["semaine"] or "-")
-        c2.write(r["jour"] or "-")
+        c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")  # <-- affichage complet du jour
         c3.write(r["creneau"] or "-")
         c4.write(r.get("raison", "") or "-")
         if c5.button("🗑️", key=f"del_{r['id']}"):
@@ -301,7 +306,6 @@ commentaire = st.text_area(
 # ENREGISTREMENT OPTIMISÉ
 # ======================
 if st.button("💾 Enregistrer"):
-    # Supprimer les anciennes lignes
     rows_to_delete = [i for i, r in enumerate(st.session_state.all_data[1:], start=2) if r[0] == user_code]
     for i in sorted(rows_to_delete, reverse=True):
         st.session_state.sheet.delete_rows(i)
@@ -321,7 +325,7 @@ if st.button("💾 Enregistrer"):
             rows_to_append.append([
                 user_code,
                 p.get("semaine", ""),
-                p.get("jour", ""),
+                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),  # <-- colonne D affichera Lundi, Mardi...
                 p.get("creneau", ""),
                 code_cr,
                 code_streamlit,
@@ -329,7 +333,6 @@ if st.button("💾 Enregistrer"):
                 st.session_state.commentaire,
                 now
             ])
-        # ⚡ Envoi en batch
         st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     else:
         st.session_state.sheet.append_row([
