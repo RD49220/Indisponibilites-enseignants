@@ -24,7 +24,7 @@ creds = Credentials.from_service_account_info(
 client = gspread.authorize(creds)
 
 # ======================
-# CHARGEMENT DES FEUILLES AVEC try/except
+# CHARGEMENT DES FEUILLES
 # ======================
 try:
     if "sheet" not in st.session_state:
@@ -35,31 +35,37 @@ try:
         st.session_state.creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
     if "jours_sheet" not in st.session_state:
         st.session_state.jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
+    if "semaines_sheet" not in st.session_state:
+        st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
 
 # ======================
-# CHARGEMENT DES DONNÉES EN SESSION (évite les lectures répétitives)
+# CHARGEMENT DES DONNÉES EN SESSION
 # ======================
 if "creneaux_data" not in st.session_state:
-    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:]  # skip header
+    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:]
 if "jours_data" not in st.session_state:
-    st.session_state.jours_data = st.session_state.jours_sheet.get_all_values()[1:]  # skip header
+    st.session_state.jours_data = st.session_state.jours_sheet.get_all_values()[1:]
+if "semaines_data" not in st.session_state:
+    st.session_state.semaines_data = st.session_state.semaines_sheet.get_all_values()[1:]
 if "users_data" not in st.session_state:
     st.session_state.users_data = st.session_state.users_sheet.get_all_values()[1:]
 if "all_data" not in st.session_state:
     st.session_state.all_data = st.session_state.sheet.get_all_values()
 
 # ======================
-# DICTIONNAIRES CRÉNEAUX ET JOURS
+# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
 # ======================
-# Crée mapping label → code_num et label → groupe
 CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
 CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
 
 JOURS_LABELS = {r[0]: r[1] for r in st.session_state.jours_data if len(r) >= 2}
 JOURS_GROUPES = {r[0]: r[2] for r in st.session_state.jours_data if len(r) >= 3}
+
+SEMAINES_LABELS = {r[0]: r[1] for r in st.session_state.semaines_data if len(r) >= 2}
+SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r) >= 3}
 
 # ======================
 # FONCTIONS UTILITAIRES
@@ -87,6 +93,20 @@ def get_jours_codes(selection):
         groupe = JOURS_GROUPES[label]
         if code_num.startswith("ALL_"):
             nums_du_groupe = [r[1] for r in st.session_state.jours_data if r[2] == groupe and not r[1].startswith("ALL_")]
+            result.extend(nums_du_groupe)
+        else:
+            result.append(code_num)
+    return result
+
+def get_semaines_nums(selection):
+    result = []
+    for label in selection:
+        if label not in SEMAINES_LABELS:
+            continue
+        code_num = SEMAINES_LABELS[label]
+        groupe = SEMAINES_GROUPES[label]
+        if code_num.startswith("ALL_"):
+            nums_du_groupe = [r[1] for r in st.session_state.semaines_data if r[2] == groupe and not r[1].startswith("ALL_")]
             result.extend(nums_du_groupe)
         else:
             result.append(code_num)
@@ -190,15 +210,12 @@ st.divider()
 # ======================
 def ajouter_creneaux(codes_sheet, user_code):
     doublon = False
-    semaines = st.session_state.semaines_sel
-    jours_sel = st.session_state.jours_sel
-    creneaux_sel = st.session_state.creneaux_sel
+    semaines_sel = get_semaines_nums(st.session_state.semaines_sel)
+    jours_codes = get_jours_codes(st.session_state.jours_sel)
+    creneaux_nums = get_creneaux_nums(st.session_state.creneaux_sel)
     raison_texte = st.session_state.raison_sel
 
-    jours_codes = get_jours_codes(jours_sel)
-    creneaux_nums = get_creneaux_nums(creneaux_sel)
-
-    for s in semaines:
+    for s in semaines_sel:
         for j_code in jours_codes:
             for num in creneaux_nums:
                 code = f"{user_code}_{j_code}_{num}_P"
@@ -229,7 +246,7 @@ def ajouter_creneaux(codes_sheet, user_code):
 # AJOUT UI
 # ======================
 st.subheader("➕ Créneaux ponctuels")
-st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
+st.multiselect("Semaine(s)", [r[0] for r in st.session_state.semaines_data], key="semaines_sel")
 st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
 st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=st.session_state.get("raison_sel", ""))
