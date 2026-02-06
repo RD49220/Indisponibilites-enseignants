@@ -26,118 +26,46 @@ client = gspread.authorize(creds)
 # ======================
 # CHARGEMENT DES FEUILLES
 # ======================
-try:
-    if "sheet" not in st.session_state:
-        st.session_state.sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-    if "users_sheet" not in st.session_state:
-        st.session_state.users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
-    if "creneaux_sheet" not in st.session_state:
-        st.session_state.creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
-    if "jours_sheet" not in st.session_state:
-        st.session_state.jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
-    if "semaines_sheet" not in st.session_state:
-        st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
-except Exception as e:
-    st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
-    st.stop()
+sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
+users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
+jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
+semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
 
 # ======================
-# CHARGEMENT DES DONNÉES EN SESSION
+# CHARGEMENT DES DONNÉES
 # ======================
-if "creneaux_data" not in st.session_state:
-    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:]
-if "jours_data" not in st.session_state:
-    st.session_state.jours_data = st.session_state.jours_sheet.get_all_values()[1:]
-if "semaines_data" not in st.session_state:
-    st.session_state.semaines_data = st.session_state.semaines_sheet.get_all_values()[1:]
-if "users_data" not in st.session_state:
-    st.session_state.users_data = st.session_state.users_sheet.get_all_values()[1:]
-if "all_data" not in st.session_state:
-    st.session_state.all_data = st.session_state.sheet.get_all_values()
+creneaux_data = creneaux_sheet.get_all_values()[1:]
+jours_data = jours_sheet.get_all_values()[1:]
+semaines_data = semaines_sheet.get_all_values()[1:]
+users_data = users_sheet.get_all_values()[1:]
+all_data = sheet.get_all_values()
 
 # ======================
-# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
+# DICTIONNAIRES
 # ======================
-CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
-CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
+CRENEAUX_LABELS = {r[0]: r[1] for r in creneaux_data if len(r) >= 2}
+CRENEAUX_GROUPES = {r[0]: r[2] for r in creneaux_data if len(r) >= 3}
+JOURS_LABELS = {r[0]: r[1] for r in jours_data if len(r) >= 2}
+JOURS_GROUPES = {r[0]: r[2] for r in jours_data if len(r) >= 3}
+SEMAINES_LABELS = {r[0]: r[1] for r in semaines_data if len(r) >= 2}
+SEMAINES_GROUPES = {r[0]: r[2] for r in semaines_data if len(r) >= 3}
 
-JOURS_LABELS = {r[0]: r[1] for r in st.session_state.jours_data if len(r) >= 2}
-JOURS_GROUPES = {r[0]: r[2] for r in st.session_state.jours_data if len(r) >= 3}
-
-SEMAINES_LABELS = {r[0]: r[1] for r in st.session_state.semaines_data if len(r) >= 2}
-SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r) >= 3}
-
-# ======================
-# Mapping code → label pour afficher les jours complets
-# ======================
 CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
-
-# ======================
-# Mapping code → label pour afficher les créneaux
-# ======================
 CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
-
-# ======================
-# FONCTIONS UTILITAIRES
-# ======================
-def get_creneaux_nums(selection):
-    result = []
-    for c in selection:
-        if c not in CRENEAUX_LABELS:
-            continue
-        code_num = CRENEAUX_LABELS[c]
-        groupe = CRENEAUX_GROUPES[c]
-        if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.creneaux_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
-        else:
-            result.append(code_num)
-    return result
-
-def get_jours_codes(selection):
-    result = []
-    for label in selection:
-        if label not in JOURS_LABELS:
-            continue
-        code_num = JOURS_LABELS[label]
-        groupe = JOURS_GROUPES[label]
-        if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.jours_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
-        else:
-            result.append(code_num)
-    return result
-
-def get_semaines_nums(selection):
-    result = []
-    for label in selection:
-        if label not in SEMAINES_LABELS:
-            continue
-        code_num = SEMAINES_LABELS[label]
-        groupe = SEMAINES_GROUPES[label]
-        if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.semaines_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
-        else:
-            result.append(code_num)
-    return result
 
 # ======================
 # SESSION STATE
 # ======================
 if "ponctuels" not in st.session_state:
     st.session_state.ponctuels = []
-
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = None
-
-for k in ["semaines_sel", "jours_sel", "creneaux_sel", "raison_sel"]:
+for k in ["semaines_sel", "jours_sel", "creneaux_sel", "raison_sel", "email_utilisateur"]:
     if k not in st.session_state:
-        st.session_state[k] = "" if k == "raison_sel" else []
-
+        st.session_state[k] = "" if k in ["raison_sel","email_utilisateur"] else []
 if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
-
 if "commentaire" not in st.session_state:
     st.session_state.commentaire = ""
 
@@ -149,7 +77,7 @@ st.title("📅 Indisponibilités enseignants")
 # ======================
 # UTILISATEURS
 # ======================
-users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
+users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in users_data if len(r) >= 3]
 options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[label]
@@ -165,16 +93,15 @@ if st.session_state.selected_user != user_code:
     st.session_state.creneaux_sel = []
     st.session_state.raison_sel = ""
     st.session_state.commentaire = ""
+    st.session_state.email_utilisateur = ""  # <-- reset email aussi
 
 # ======================
-# LECTURE DES DONNÉES DE L’UTILISATEUR
+# LECTURE DONNÉES EXISTANTES
 # ======================
-user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
-
+user_rows = [r for r in all_data[1:] if r[0] == user_code]
 codes_sheet = set()
 commentaire_existant = ""
 dernier_timestamp = None
-
 for r in user_rows:
     if len(r) > 5 and r[5].endswith("_P"):
         codes_sheet.add(r[5])
@@ -220,9 +147,27 @@ st.divider()
 # ======================
 def ajouter_creneaux(codes_sheet, user_code):
     doublon = False
-    semaines_sel = get_semaines_nums(st.session_state.semaines_sel)
-    jours_codes = get_jours_codes(st.session_state.jours_sel)
-    creneaux_nums = get_creneaux_nums(st.session_state.creneaux_sel)
+    semaines_sel = []
+    for s in st.session_state.semaines_sel:
+        if SEMAINES_LABELS[s].startswith("ALL_"):
+            groupe = SEMAINES_GROUPES[s]
+            semaines_sel.extend([r[1] for r in semaines_data if r[2] == groupe and not r[1].startswith("ALL_")])
+        else:
+            semaines_sel.append(SEMAINES_LABELS[s])
+    jours_codes = []
+    for j in st.session_state.jours_sel:
+        if JOURS_LABELS[j].startswith("ALL_"):
+            groupe = JOURS_GROUPES[j]
+            jours_codes.extend([r[1] for r in jours_data if r[2] == groupe and not r[1].startswith("ALL_")])
+        else:
+            jours_codes.append(JOURS_LABELS[j])
+    creneaux_nums = []
+    for c in st.session_state.creneaux_sel:
+        if CRENEAUX_LABELS[c].startswith("ALL_"):
+            groupe = CRENEAUX_GROUPES[c]
+            creneaux_nums.extend([r[1] for r in creneaux_data if r[2] == groupe and not r[1].startswith("ALL_")])
+        else:
+            creneaux_nums.append(CRENEAUX_LABELS[c])
     raison_texte = st.session_state.raison_sel
 
     for s in semaines_sel:
@@ -234,7 +179,6 @@ def ajouter_creneaux(codes_sheet, user_code):
                     for p in st.session_state.ponctuels
                 )
                 existe_sheet = code in codes_sheet
-
                 if existe_streamlit or existe_sheet:
                     doublon = True
                 else:
@@ -256,47 +200,31 @@ def ajouter_creneaux(codes_sheet, user_code):
 # AJOUT UI
 # ======================
 st.subheader("➕ Créneaux ponctuels")
-st.multiselect("Semaine(s)", [r[0] for r in st.session_state.semaines_data], key="semaines_sel")
-st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
-st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
+st.multiselect("Semaine(s)", [r[0] for r in semaines_data], key="semaines_sel")
+st.multiselect("Jour(s)", [r[0] for r in jours_data], key="jours_sel")
+st.multiselect("Créneau(x)", [r[0] for r in creneaux_data], key="creneaux_sel")
 st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=st.session_state.get("raison_sel", ""))
 
 st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
-
 if st.session_state._warning_doublon:
     st.warning("⚠️ Certains créneaux existaient déjà et n'ont pas été ajoutés.")
     st.session_state._warning_doublon = False
 
-st.divider()
+# ======================
+# CHAMP E-MAIL OPTIONNEL
+# ======================
+st.subheader("✉️ Adresse e-mail (optionnel)")
+st.text_input("Entrez votre adresse e-mail", key="email_utilisateur")
 
 # ======================
-# TABLEAU + SUPPRESSION
+# RÉCAPITULATIF
 # ======================
-st.subheader("📝 Créneaux ajoutés")
+st.subheader("📄 Récapitulatif de vos indisponibilités")
 if st.session_state.ponctuels:
-    delete_id = None
-    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 3, 0.5])
-    h1.markdown("**Semaine**")
-    h2.markdown("**Jour**")
-    h3.markdown("**Créneau**")
-    h4.markdown("**Raison/Commentaire**")
-    h5.markdown("**🗑️**")
-
-    for r in st.session_state.ponctuels:
-        c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
-        c1.write(r["semaine"] or "-")
-        c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")
-        c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]) or "-")  # <-- affichage complet du créneau
-        c4.write(r.get("raison", "") or "-")
-        if c5.button("🗑️", key=f"del_{r['id']}"):
-            delete_id = r["id"]
-    if delete_id:
-        st.session_state.ponctuels = [r for r in st.session_state.ponctuels if r["id"] != delete_id]
-        st.rerun()
+    for p in st.session_state.ponctuels:
+        st.write(f"Semaine {p['semaine']} - {CODE_TO_JOUR.get(p['jour'], p['jour'])} - {CODE_TO_CREN.get(p['creneau'], p['creneau'])} - {p.get('raison','')}")
 else:
-    st.write("Aucune indisponibilité enregistrée.")
-
-st.divider()
+    st.write("Aucun créneau ajouté pour le moment.")
 
 # ======================
 # COMMENTAIRE GLOBAL
@@ -308,13 +236,12 @@ commentaire = st.text_area(
 )
 
 # ======================
-# ENREGISTREMENT OPTIMISÉ
+# ENREGISTREMENT
 # ======================
 if st.button("💾 Enregistrer"):
-    rows_to_delete = [i for i, r in enumerate(st.session_state.all_data[1:], start=2) if r[0] == user_code]
+    rows_to_delete = [i for i, r in enumerate(all_data[1:], start=2) if r[0] == user_code]
     for i in sorted(rows_to_delete, reverse=True):
-        st.session_state.sheet.delete_rows(i)
-
+        sheet.delete_rows(i)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if st.session_state.ponctuels:
         rows_to_append = []
@@ -330,20 +257,22 @@ if st.button("💾 Enregistrer"):
             rows_to_append.append([
                 user_code,
                 p.get("semaine", ""),
-                CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),  # <-- colonne D avec label complet
-                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),        # colonne Jour déjà mise à jour
+                CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
+                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
                 code_cr,
                 code_streamlit,
                 raison,
                 st.session_state.commentaire,
+                st.session_state.get("email_utilisateur",""),  # <-- e-mail
                 now
             ])
-        st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+        sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     else:
-        st.session_state.sheet.append_row([
+        sheet.append_row([
             user_code, "", "", "", "", f"{user_code}_0_P",
             "Aucune indisponibilité enregistrée.",
             st.session_state.commentaire,
+            st.session_state.get("email_utilisateur",""),
             now
         ], value_input_option="USER_ENTERED")
     st.success("✅ Indisponibilités enregistrées")
