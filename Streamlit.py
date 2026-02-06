@@ -23,15 +23,20 @@ creds = Credentials.from_service_account_info(
 )
 client = gspread.authorize(creds)
 
-sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+# ✅ Vérification des accès
+try:
+    sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
+    users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+    creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
+    jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
+except Exception as e:
+    st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
+    st.stop()
 
 # ======================
 # LECTURE CRÉNEAUX DE LA FEUILLE GOOGLE
 # ======================
-creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
 creneaux_data = creneaux_sheet.get_all_values()[1:]  # skip header
-
 CRENEAUX_LABELS = {r[0]: r[1] for r in creneaux_data if len(r) >= 2}  # label_affiche → code_num
 CRENEAUX_GROUPES = {r[0]: r[2] for r in creneaux_data if len(r) >= 3}  # label_affiche → groupe
 
@@ -52,9 +57,7 @@ def get_creneaux_nums(selection):
 # ======================
 # LECTURE JOURS DE LA FEUILLE GOOGLE
 # ======================
-jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
-jours_data = jours_sheet.get_all_values()[1:]
-
+jours_data = jours_sheet.get_all_values()[1:]  # skip header
 JOURS_LABELS = {r[0]: r[1] for r in jours_data if len(r) >= 2}  # label_affiche → code_num
 JOURS_GROUPES = {r[0]: r[2] for r in jours_data if len(r) >= 3}  # label_affiche → groupe
 
@@ -205,12 +208,10 @@ def ajouter_creneaux(codes_sheet, user_code):
                         "raison": raison_texte
                     })
 
-    # 🔹 RESET DES LISTES DÉROULANTES + champ raison
     st.session_state.semaines_sel = []
     st.session_state.jours_sel = []
     st.session_state.creneaux_sel = []
     st.session_state.raison_sel = ""
-
     st.session_state._warning_doublon = doublon
 
 # ======================
@@ -219,8 +220,8 @@ def ajouter_creneaux(codes_sheet, user_code):
 st.subheader("➕ Créneaux ponctuels")
 
 st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
-st.multiselect("Jour(s)", [r[0] for r in jours_data], key="jours_sel")  # dynamique
-st.multiselect("Créneau(x)", [r[0] for r in creneaux_data], key="creneaux_sel")  # dynamique
+st.multiselect("Jour(s)", [r[0] for r in jours_data], key="jours_sel")
+st.multiselect("Créneau(x)", [r[0] for r in creneaux_data], key="creneaux_sel")
 st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=st.session_state.get("raison_sel", ""))
 
 st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
@@ -271,57 +272,52 @@ st.divider()
 # ======================
 commentaire = st.text_area(
     "💬 Commentaire global",
-    value=st.session_state.get("commentaire", ""),
+    value=st.session_state.get("commentaire", commentaire_existant if 'commentaire_existant' in locals() else ""),
     key="commentaire"
 )
 
 # ======================
-# ENREGISTREMENT
+# ENREGISTREMENT OPTIMISÉ AVEC append_rows
 # ======================
 if st.button("💾 Enregistrer"):
     # Supprimer toutes les anciennes indisponibilités pour cet utilisateur
-    rows_to_delete = [
-        i for i, r in enumerate(all_data[1:], start=2)
-        if r[0] == user_code
-    ]
+    rows_to_delete = [i for i, r in enumerate(all_data[1:], start=2) if r[0] == user_code]
     for i in sorted(rows_to_delete, reverse=True):
         sheet.delete_rows(i)
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if st.session_state.ponctuels:
+        rows_to_append = []
         for p in st.session_state.ponctuels:
-            if p["jour"] and p["creneau"]:  # créneau renseigné
+            if p["jour"] and p["creneau"]:
                 code_cr = f"{p['jour']}_{p['creneau']}"
                 code_streamlit = f"{user_code}_{code_cr}_P"
                 raison = p.get("raison", "")
-            else:  # ligne vide
+            else:
                 code_cr = ""
                 code_streamlit = f"{user_code}_0_P"
                 raison = "Aucune indisponibilité enregistrée."
 
-            sheet.append_row([
+            rows_to_append.append([
                 user_code,
-                p.get("semaine", ""),  # semaine
-                p.get("jour", ""),     # jour
-                p.get("creneau", ""),  # créneau
+                p.get("semaine", ""),
+                p.get("jour", ""),
+                p.get("creneau", ""),
                 code_cr,
                 code_streamlit,
                 raison,
                 st.session_state.commentaire,
                 now
             ])
-    else:  # aucun créneau du tout
+        # ⚡ Envoi en batch
+        sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+    else:
         sheet.append_row([
-            user_code,
-            "",  # semaine vide
-            "",  # jour vide
-            "",  # créneau vide
-            "",  # code_cr vide
-            f"{user_code}_0_P",
+            user_code, "", "", "", "", f"{user_code}_0_P",
             "Aucune indisponibilité enregistrée.",
             st.session_state.commentaire,
             now
-        ])
+        ], value_input_option="USER_ENTERED")
 
     st.success("✅ Indisponibilités enregistrées")
