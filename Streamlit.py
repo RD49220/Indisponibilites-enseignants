@@ -73,6 +73,11 @@ SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r)
 CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
 
 # ======================
+# Mapping code → label pour afficher les créneaux
+# ======================
+CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
+
+# ======================
 # FONCTIONS UTILITAIRES
 # ======================
 def get_creneaux_nums(selection):
@@ -280,8 +285,8 @@ if st.session_state.ponctuels:
     for r in st.session_state.ponctuels:
         c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 3, 0.5])
         c1.write(r["semaine"] or "-")
-        c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")  # <-- affichage complet du jour
-        c3.write(r["creneau"] or "-")
+        c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")
+        c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]) or "-")  # <-- affichage complet du créneau
         c4.write(r.get("raison", "") or "-")
         if c5.button("🗑️", key=f"del_{r['id']}"):
             delete_id = r["id"]
@@ -325,8 +330,8 @@ if st.button("💾 Enregistrer"):
             rows_to_append.append([
                 user_code,
                 p.get("semaine", ""),
-                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),  # <-- colonne D affichera Lundi, Mardi...
-                p.get("creneau", ""),
+                CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),  # <-- colonne D avec label complet
+                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),        # colonne Jour déjà mise à jour
                 code_cr,
                 code_streamlit,
                 raison,
