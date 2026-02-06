@@ -24,7 +24,7 @@ creds = Credentials.from_service_account_info(
 client = gspread.authorize(creds)
 
 # ======================
-# CACHE DES FEUILLES (pour éviter quota/erreurs sur rerun)
+# CACHE DES FEUILLES
 # ======================
 if "sheets_cache" not in st.session_state:
     st.session_state.sheets_cache = {}
@@ -220,20 +220,36 @@ if st.session_state._warning_doublon:
     st.session_state._warning_doublon = False
 
 # ======================
+# TABLEAU CRÉNEAUX AJOUTÉS + SUPPRESSION
+# ======================
+st.subheader("📝 Créneaux ajoutés")
+if st.session_state.ponctuels:
+    delete_id = None
+    h1, h2, h3, h4, h5 = st.columns([1, 2, 2, 3, 0.5])
+    h1.markdown("**Semaine**")
+    h2.markdown("**Jour**")
+    h3.markdown("**Créneau**")
+    h4.markdown("**Raison/Commentaire**")
+    h5.markdown("**🗑️**")
+    for r in st.session_state.ponctuels:
+        c1, c2, c3, c4, c5 = st.columns([1,2,2,3,0.5])
+        c1.write(r["semaine"] or "-")
+        c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]))
+        c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]))
+        c4.write(r.get("raison","") or "-")
+        if c5.button("🗑️", key=f"del_{r['id']}"):
+            delete_id = r["id"]
+    if delete_id:
+        st.session_state.ponctuels = [r for r in st.session_state.ponctuels if r["id"] != delete_id]
+        st.experimental_rerun()
+else:
+    st.write("Aucune indisponibilité enregistrée.")
+
+# ======================
 # CHAMP E-MAIL OPTIONNEL
 # ======================
 st.subheader("✉️ Adresse e-mail (optionnel)")
 st.text_input("Entrez votre adresse e-mail", key="email_utilisateur")
-
-# ======================
-# RÉCAPITULATIF
-# ======================
-st.subheader("📄 Récapitulatif de vos indisponibilités")
-if st.session_state.ponctuels:
-    for p in st.session_state.ponctuels:
-        st.write(f"Semaine {p['semaine']} - {CODE_TO_JOUR.get(p['jour'], p['jour'])} - {CODE_TO_CREN.get(p['creneau'], p['creneau'])} - {p.get('raison','')}")
-else:
-    st.write("Aucun créneau ajouté pour le moment.")
 
 # ======================
 # COMMENTAIRE GLOBAL
@@ -255,24 +271,19 @@ if st.button("💾 Enregistrer"):
     if st.session_state.ponctuels:
         rows_to_append = []
         for p in st.session_state.ponctuels:
-            if p["jour"] and p["creneau"]:
-                code_cr = f"{p['jour']}_{p['creneau']}"
-                code_streamlit = f"{user_code}_{code_cr}_P"
-                raison = p.get("raison", "")
-            else:
-                code_cr = ""
-                code_streamlit = f"{user_code}_0_P"
-                raison = "Aucune indisponibilité enregistrée."
+            code_cr = f"{p['jour']}_{p['creneau']}" if p["jour"] and p["creneau"] else ""
+            code_streamlit = f"{user_code}_{code_cr}_P" if code_cr else f"{user_code}_0_P"
+            raison = p.get("raison","") if code_cr else "Aucune indisponibilité enregistrée."
             rows_to_append.append([
                 user_code,
                 p.get("semaine", ""),
-                CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
-                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
+                CODE_TO_JOUR.get(p.get("jour",""), p.get("jour","")),
+                CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau","")),
                 code_cr,
                 code_streamlit,
                 raison,
                 st.session_state.commentaire,
-                st.session_state.get("email_utilisateur",""),  # <-- e-mail
+                st.session_state.get("email_utilisateur",""),
                 now
             ])
         sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
