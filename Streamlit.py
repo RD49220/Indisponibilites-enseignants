@@ -1,6 +1,6 @@
 import streamlit as st
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ---------------- CONFIG ---------------- #
@@ -24,23 +24,29 @@ CRENEAUX = {
     "16h30-18h": 7,
 }
 
-# Créneaux étendus
 CRENEAUX_EXT = {
     "Matin": [1, 2, 3],
     "Après-midi": [5, 6, 7],
 }
 
 # ---------------- GOOGLE SHEET ---------------- #
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-client = gspread.authorize(creds)
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
+creds = Credentials.from_service_account_file(
+    "credentials.json",
+    scopes=SCOPES
+)
+
+client = gspread.authorize(creds)
 sheet = client.open("Indisponibilites_enseignants").sheet1
 
 # ---------------- SESSION STATE ---------------- #
 for k in [
     "enseignant_sel", "semaine_sel", "jour_sel", "creneau_sel",
-    "raison_sel", "commentaire_global", "creneaux"
+    "raison_sel", "commentaire_global", "creneaux", "enseignant_prev"
 ]:
     if k not in st.session_state:
         st.session_state[k] = "" if k != "creneaux" else []
@@ -52,12 +58,13 @@ enseignant = st.selectbox(
     key="enseignant_sel"
 )
 
-# Reset champs si changement enseignant
-if st.session_state.get("enseignant_prev") != enseignant:
+# Reset si changement enseignant
+if st.session_state.enseignant_prev != enseignant:
     st.session_state.semaine_sel = ""
     st.session_state.jour_sel = ""
     st.session_state.creneau_sel = ""
     st.session_state.raison_sel = ""
+    st.session_state.commentaire_global = ""
     st.session_state.creneaux = []
     st.session_state.enseignant_prev = enseignant
 
@@ -69,8 +76,8 @@ if enseignant:
     if rows_user:
         last_ts = rows_user[-1][8]
         st.warning(
-            f"⚠️ Des indisponibilités sont déjà enregistrées pour vous.\n\n"
-            f"Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement.\n\n"
+            "⚠️ Des indisponibilités sont déjà enregistrées pour vous.\n\n"
+            "Toute modification (ajout ou suppression) effacera les anciennes données lors de l'enregistrement.\n\n"
             f"Dernière modification effectuée le : {last_ts}"
         )
 
@@ -97,30 +104,23 @@ if st.button("➕ Ajouter"):
     else:
         jour_code = JOURS[jour]
 
-        # Dépliage Matin / Après-midi
-        if creneau in CRENEAUX_EXT:
-            liste_creneaux = CRENEAUX_EXT[creneau]
-        else:
-            liste_creneaux = [CRENEAUX[creneau]]
+        nums = CRENEAUX_EXT.get(creneau, [CRENEAUX[creneau]])
+        sheet_codes = [r[5] for r in sheet.get_all_values() if len(r) > 5]
 
         added = False
+        for num in nums:
+            code = f"{enseignant}_{jour_code}_{num}_P"
 
-        for num in liste_creneaux:
-            code_streamlit = f"{enseignant}_{jour_code}_{num}_P"
-
-            # Anti doublon local
-            if any(c["code"] == code_streamlit for c in st.session_state.creneaux):
+            if any(c["code"] == code for c in st.session_state.creneaux):
                 continue
-
-            # Anti doublon Google Sheet
-            if any(r[5] == code_streamlit for r in sheet.get_all_values()):
+            if code in sheet_codes:
                 continue
 
             st.session_state.creneaux.append({
                 "semaine": semaine,
                 "jour": jour,
                 "creneau": num,
-                "code": code_streamlit,
+                "code": code,
                 "raison": raison
             })
             added = True
@@ -156,11 +156,10 @@ st.text_area("Commentaire global", key="commentaire_global", height=100)
 
 # ---------------- ENREGISTRER ---------------- #
 if st.button("💾 Enregistrer"):
-    # Suppression anciennes données
     data = sheet.get_all_values()
-    for idx in range(len(data) - 1, 0, -1):
-        if data[idx][0] == enseignant:
-            sheet.delete_rows(idx + 1)
+    for i in range(len(data) - 1, 0, -1):
+        if data[i][0] == enseignant:
+            sheet.delete_rows(i + 1)
 
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
 
