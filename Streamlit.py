@@ -3,14 +3,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# ======================
-# CONFIG
-# ======================
+# ================= CONFIG =================
 st.set_page_config(page_title="Indisponibilités enseignants", layout="wide")
 
 NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
+ONGLET_CRENEAUX = "Creneaux"
 
 JOURS = {
     "Lundi": "LUN",
@@ -20,151 +19,144 @@ JOURS = {
     "Vendredi": "VEN"
 }
 
-CRENEAUX = {
-    1: "8h-9h30",
-    2: "9h30-11h",
-    3: "11h-12h30",
-    5: "14h-15h30",
-    6: "15h30-17h",
-    7: "17h-18h30"
-}
-
-CRENEAUX_GROUPES = {
-    "Matin": [1, 2, 3],
-    "Après-midi": [5, 6, 7]
-}
-
-# ======================
-# GOOGLE SHEETS AUTH
-# ======================
-creds_dict = st.secrets["gcp_service_account"]
-
-scopes = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
-
-creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+# ================= GOOGLE AUTH =================
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=[
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+)
 client = gspread.authorize(creds)
 
 sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
 users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+creneaux_sheet = client.open(NOM_SHEET).worksheet(ONGLET_CRENEAUX)
 
-# ======================
-# SESSION STATE
-# ======================
-defaults = {
-    "ponctuels": [],
-    "selected_user": None,
-    "semaines_sel": [],
-    "jours_sel": [],
-    "creneaux_sel": [],
-    "raison_sel": "",
-    "commentaire_global": ""
-}
+# ================= LOAD CRENEAUX =================
+creneaux_data = creneaux_sheet.get_all_records()
 
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+labels_creaneaux = [r["label_affiche"] for r in creneaux_data]
 
-# ======================
-# UI
-# ======================
+def resolve_creneaux(label):
+    """Retourne la liste des numéros de créneaux à enregistrer"""
+    row = next(r for r in creneaux_data if r["label_affiche"] == label)
+
+    if row["code_num"] == "ALL_M":
+        return [int(r["code_num"]) for r in creneaux_data if r["groupe"] == "MA" and r["code_num"].isdigit()]
+
+    if row["code_num"] == "ALL_A":
+        return [int(r["code_num"]) for r in creneaux_data if r["groupe"] == "AP" and r["code_num"].isdigit()]
+
+    return [int(row["code_num"])]
+
+# ================= SESSION =================
+if "ponctuels" not in st.session_state:
+    st.session_state.ponctuels = []
+
+if "selected_user" not in st.session_state:
+    st.session_state.selected_user = None
+
+# ================= UI =================
 st.title("📅 Indisponibilités enseignants")
 
-# ======================
-# UTILISATEURS
-# ======================
-users_data = users_sheet.get_all_values()[1:]
-users = [
-    {"code": r[0], "nom": r[1], "prenom": r[2]}
-    for r in users_data if len(r) >= 3
-]
+# ================= USERS =================
+users = users_sheet.get_all_records()
+options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
-options = {
-    f"{u['code']} – {u['nom']} {u['prenom']}": u["code"]
-    for u in users
-}
+label_user = st.selectbox("Choisissez votre nom", options.keys())
+user_code = options[label_user]
 
-selected_label = st.selectbox("Choisissez votre nom", options.keys())
-user_code = options[selected_label]
-
-# Reset si changement enseignant
 if st.session_state.selected_user != user_code:
-    st.session_state.update({
-        "selected_user": user_code,
-        "ponctuels": [],
-        "semaines_sel": [],
-        "jours_sel": [],
-        "creneaux_sel": [],
-        "raison_sel": "",
-        "commentaire_global": ""
-    })
+    st.session_state.selected_user = user_code
+    st.session_state.ponctuels = []
 
-# ======================
-# DONNÉES EXISTANTES
-# ======================
-all_data = sheet.get_all_values()
-user_rows = [r for r in all_data[1:] if r and r[0] == user_code]
-existing_codes = {r[5] for r in user_rows if len(r) > 5}
+# ================= FORM =================
+with st.form("ajout"):
+    col1, col2, col3 = st.columns(3)
 
-# ======================
-# FORMULAIRE
-# ======================
-with st.form("ponctuel_form"):
-    st.subheader("➕ Créneaux ponctuels")
+    with col1:
+        semaine = st.selectbox("Semaine", list(range(1, 53)))
+    with col2:
+        jour = st.selectbox("Jour", list(JOURS.keys()))
+    with col3:
+        label_creneau = st.selectbox("Créneau", labels_creaneaux)
 
-    semaines = st.multiselect("Semaine(s)", list(range(1, 53)), key="semaines_sel")
-    jours = st.multiselect("Jour(s)", list(JOURS.keys()), key="jours_sel")
-    creneaux = st.multiselect(
-        "Créneau(x)",
-        list(CRENEAUX_GROUPES.keys()) + list(CRENEAUX.values()),
-        key="creneaux_sel"
-    )
+    raison = st.text_area("Raisons / commentaires", height=80)
+    submit = st.form_submit_button("➕ Ajouter")
 
-    raison = st.text_area("Raisons / Commentaires", key="raison_sel", height=80)
-    ajouter = st.form_submit_button("➕ Ajouter")
+    if submit:
+        nums = resolve_creneaux(label_creneau)
+        j_code = JOURS[jour]
 
-    if ajouter:
-        added = False
+        for num in nums:
+            code = f"{user_code}_{j_code}_{num}_P"
 
-        for s in semaines:
-            for j in jours:
-                j_code = JOURS[j]
-                for c in creneaux:
-                    nums = CRENEAUX_GROUPES.get(
-                        c,
-                        [k for k, v in CRENEAUX.items() if v == c]
-                    )
+            if any(p["code"] == code for p in st.session_state.ponctuels):
+                continue
 
-                    for num in nums:
-                        code = f"{user_code}_{j_code}_{num}_P"
-                        if code in existing_codes:
-                            continue
-                        if any(p["code"] == code for p in st.session_state.ponctuels):
-                            continue
-
-                        st.session_state.ponctuels.append({
-                            "semaine": s,
-                            "jour": j,
-                            "creneau": CRENEAUX[num],
-                            "code": code,
-                            "raison": raison
-                        })
-                        added = True
-
-        if not added:
-            st.warning("⚠️ Créneau déjà existant.")
-        else:
-            st.session_state.update({
-                "semaines_sel": [],
-                "jours_sel": [],
-                "creneaux_sel": [],
-                "raison_sel": ""
+            st.session_state.ponctuels.append({
+                "semaine": semaine,
+                "jour": jour,
+                "num": num,
+                "code": code,
+                "raison": raison
             })
-            st.rerun()
+
+# ================= TABLE =================
+if st.session_state.ponctuels:
+    st.subheader("📝 Récapitulatif")
+
+    h1, h2, h3, h4, h5 = st.columns([1, 2, 1, 2, 0.5])
+    h1.markdown("**Sem**")
+    h2.markdown("**Jour**")
+    h3.markdown("**Créneau**")
+    h4.markdown("**Raison**")
+    h5.markdown("**🗑️**")
+
+    for i, r in enumerate(st.session_state.ponctuels):
+        c1, c2, c3, c4, c5 = st.columns([1, 2, 1, 2, 0.5])
+        c1.write(r["semaine"])
+        c2.write(r["jour"])
+        c3.write(r["num"])
+        c4.write(r["raison"])
+
+        if c5.button("🗑️", key=f"del_{i}"):
+            st.session_state.ponctuels.pop(i)
             st.rerun()
 
-# ======================
-# FIN
-# ======================
+# ================= SAVE =================
+commentaire_global = st.text_area("💬 Commentaire global")
+
+if st.button("💾 Enregistrer"):
+    all_data = sheet.get_all_values()
+    for i in range(len(all_data) - 1, 0, -1):
+        if all_data[i][0] == user_code:
+            sheet.delete_rows(i + 1)
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not st.session_state.ponctuels:
+        sheet.append_row([
+            user_code, "", "", "", "",
+            f"{user_code}_0_P",
+            "Aucune indisponibilité enregistrée",
+            commentaire_global,
+            now
+        ])
+    else:
+        for r in st.session_state.ponctuels:
+            sheet.append_row([
+                user_code,
+                r["semaine"],
+                r["jour"],
+                r["num"],
+                "",
+                r["code"],
+                r["raison"],
+                commentaire_global,
+                now
+            ])
+
+    st.success("✅ Enregistrement effectué")
+    st.session_state.ponctuels = []
