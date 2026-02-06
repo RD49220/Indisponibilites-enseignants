@@ -24,13 +24,22 @@ creds = Credentials.from_service_account_info(
 client = gspread.authorize(creds)
 
 # ======================
-# CHARGEMENT DES FEUILLES
+# CACHE DES FEUILLES (pour éviter quota/erreurs sur rerun)
 # ======================
-sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
-creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
-jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
-semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
+if "sheets_cache" not in st.session_state:
+    st.session_state.sheets_cache = {}
+    st.session_state.sheets_cache["main"] = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
+    st.session_state.sheets_cache["users"] = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
+    st.session_state.sheets_cache["creneaux"] = client.open(NOM_SHEET).worksheet("Creneaux")
+    st.session_state.sheets_cache["jours"] = client.open(NOM_SHEET).worksheet("Jours")
+    st.session_state.sheets_cache["semaines"] = client.open(NOM_SHEET).worksheet("Semaines")
+
+# Références aux feuilles
+sheet = st.session_state.sheets_cache["main"]
+users_sheet = st.session_state.sheets_cache["users"]
+creneaux_sheet = st.session_state.sheets_cache["creneaux"]
+jours_sheet = st.session_state.sheets_cache["jours"]
+semaines_sheet = st.session_state.sheets_cache["semaines"]
 
 # ======================
 # CHARGEMENT DES DONNÉES
