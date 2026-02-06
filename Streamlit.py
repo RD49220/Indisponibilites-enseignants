@@ -35,7 +35,6 @@ creneaux_sheet = client.open(NOM_SHEET).worksheet(ONGLET_CRENEAUX)
 
 # ================= LOAD CRENEAUX =================
 creneaux_data = creneaux_sheet.get_all_records()
-
 labels_creaneaux = [r["label_affiche"] for r in creneaux_data]
 
 def resolve_creneaux(label):
@@ -61,7 +60,20 @@ if "selected_user" not in st.session_state:
 st.title("📅 Indisponibilités enseignants")
 
 # ================= USERS =================
-users = users_sheet.get_all_records()
+# Lecture sécurisée des utilisateurs (remplace get_all_records)
+users_values = users_sheet.get_all_values()
+headers = users_values[0]
+rows = users_values[1:]
+
+users = []
+for row in rows:
+    if len(row) >= 3 and row[0].strip():
+        users.append({
+            "code": row[0].strip(),
+            "nom": row[1].strip(),
+            "prenom": row[2].strip()
+        })
+
 options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
 
 label_user = st.selectbox("Choisissez votre nom", options.keys())
@@ -71,7 +83,7 @@ if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
     st.session_state.ponctuels = []
 
-# ================= FORM =================
+# ================= FORMULAIRE =================
 with st.form("ajout"):
     col1, col2, col3 = st.columns(3)
 
@@ -103,7 +115,13 @@ with st.form("ajout"):
                 "raison": raison
             })
 
-# ================= TABLE =================
+        # Reset automatique des champs du formulaire
+        st.session_state.update({
+            "raison_sel": ""
+        })
+        st.rerun()
+
+# ================= TABLEAU =================
 if st.session_state.ponctuels:
     st.subheader("📝 Récapitulatif")
 
@@ -125,9 +143,10 @@ if st.session_state.ponctuels:
             st.session_state.ponctuels.pop(i)
             st.rerun()
 
-# ================= SAVE =================
+# ================= COMMENTAIRE GLOBAL =================
 commentaire_global = st.text_area("💬 Commentaire global")
 
+# ================= ENREGISTREMENT =================
 if st.button("💾 Enregistrer"):
     all_data = sheet.get_all_values()
     for i in range(len(all_data) - 1, 0, -1):
