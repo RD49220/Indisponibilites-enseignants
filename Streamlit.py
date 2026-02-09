@@ -300,6 +300,7 @@ else:
         st.session_state.creneaux_sel = []
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
+        st.rerun()
 
     # Lecture des données existantes
     user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
