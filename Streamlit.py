@@ -237,54 +237,54 @@ else:
     st.info("Choix pour tous les semestres.")
 
 
-    # Filtrage des semaines selon configuration admin
-    all_semaines = st.session_state.semaines_data
-    if st.session_state.semestre_filter == "Pairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
-    elif st.session_state.semestre_filter == "Impairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SI"]
-    else:
-        filtered_semaines = all_semaines
+ # Filtrage des semaines selon configuration admin
+all_semaines = st.session_state.semaines_data
+if st.session_state.semestre_filter == "Pairs":
+    filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
+elif st.session_state.semestre_filter == "Impairs":
+       filtered_semaines = [s for s in all_semaines if s[2] == "SI"]
+else:
+    filtered_semaines = all_semaines
 
-    users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
-    options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
-    label = st.selectbox("Choisissez votre nom", options.keys())
-    user_code = options[label]
+users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
+options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
+label = st.selectbox("Choisissez votre nom", options.keys())
+user_code = options[label]
 
-    # Reset si changement enseignant
-    if st.session_state.selected_user != user_code:
-        st.session_state.selected_user = user_code
-        st.session_state.ponctuels = []
-        st.session_state.semaines_sel = []
-        st.session_state.jours_sel = []
-        st.session_state.creneaux_sel = []
-        st.session_state.raison_sel = ""
-        st.session_state.commentaire = ""
+# Reset si changement enseignant
+if st.session_state.selected_user != user_code:
+    st.session_state.selected_user = user_code
+    st.session_state.ponctuels = []
+    st.session_state.semaines_sel = []
+    st.session_state.jours_sel = []
+    st.session_state.creneaux_sel = []
+    st.session_state.raison_sel = ""
+     st.session_state.commentaire = ""
 
-    # Lecture des données existantes
-    user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
-    codes_sheet = set()
-    commentaire_existant = ""
-    dernier_timestamp = None
-    for r in user_rows:
-        if len(r) > 5 and r[5].endswith("_P"):
-            codes_sheet.add(r[5])
-            commentaire_existant = r[6] if len(r) > 6 else ""
-        if len(r) > 8 and r[8]:
-            if dernier_timestamp is None or r[8] > dernier_timestamp:
-                dernier_timestamp = r[8]
+# Lecture des données existantes
+user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
+codes_sheet = set()
+commentaire_existant = ""
+dernier_timestamp = None
+for r in user_rows:
+    if len(r) > 5 and r[5].endswith("_P"):
+        codes_sheet.add(r[5])
+        commentaire_existant = r[6] if len(r) > 6 else ""
+    if len(r) > 8 and r[8]:
+        if dernier_timestamp is None or r[8] > dernier_timestamp:
+            dernier_timestamp = r[8]
 
-    if codes_sheet:
-        msg = (
-            "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>"
+if codes_sheet:
+    msg = (
+         "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>"
             "Toute modification effacera les anciennes données lors de l'enregistrement.<br>"
         )
-        if dernier_timestamp:
-            msg += f"Dernière modification effectuée le : {dernier_timestamp}"
-        st.markdown(msg, unsafe_allow_html=True)
+    if dernier_timestamp:
+         msg += f"Dernière modification effectuée le : {dernier_timestamp}"
+    st.markdown(msg, unsafe_allow_html=True)
 
-    # Pré-remplissage ponctuels
-    if not st.session_state.ponctuels:
+# Pré-remplissage ponctuels
+ if not st.session_state.ponctuels:
         deja_vus = set()
         for r in user_rows:
             if len(r) > 5 and r[5].endswith("_P"):
