@@ -10,6 +10,7 @@ import uuid
 NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
+ONGLET_CONFIG = "Config"
 ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
 
 # ======================
@@ -47,8 +48,7 @@ try:
     if "semaines_sheet" not in st.session_state:
         st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
     if "config_sheet" not in st.session_state:
-        # Feuille pour stocker la config admin
-        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet("Config")
+        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet(ONGLET_CONFIG)
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
@@ -66,19 +66,9 @@ if "users_data" not in st.session_state:
     st.session_state.users_data = st.session_state.users_sheet.get_all_values()[1:]
 if "all_data" not in st.session_state:
     st.session_state.all_data = st.session_state.sheet.get_all_values()
-if "semestre_filter" not in st.session_state:
-    # 🔹 Lecture de la config admin si existante
-    try:
-        val = st.session_state.config_sheet.acell("A1").value
-        if val in ["Toutes","Pairs","Impairs"]:
-            st.session_state.semestre_filter = val
-        else:
-            st.session_state.semestre_filter = "Toutes"
-    except:
-        st.session_state.semestre_filter = "Toutes"
 
 # ======================
-# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
+# DICTIONNAIRES
 # ======================
 CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
 CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
@@ -144,6 +134,15 @@ for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_s
     if k not in st.session_state:
         st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
 
+if "semestre_filter" not in st.session_state:
+    # lecture config Google Sheet
+    try:
+        conf_rows = st.session_state.config_sheet.get_all_values()
+        conf_dict = {r[0]: r[1] for r in conf_rows if len(r) >= 2}
+        st.session_state.semestre_filter = conf_dict.get("semestre_filter", "Toutes")
+    except Exception:
+        st.session_state.semestre_filter = "Toutes"
+
 # ======================
 # MODE UTILISATEUR / ADMIN
 # ======================
@@ -160,20 +159,27 @@ if mode == "Administrateur":
 
     st.success("✅ Mode Administrateur activé.")
 
-    # Choix semestre pair/impair (stocké globalement et persisté)
+    # Choix semestre pair/impair
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
         index=["Toutes","Pairs","Impairs"].index(st.session_state.semestre_filter)
     )
     st.session_state.semestre_filter = semestre_choice
-    st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
-    # Persistance config dans Google Sheet
+    # Enregistrement config
     try:
-        st.session_state.config_sheet.update("A1", semestre_choice)
-    except:
-        st.warning("⚠️ Impossible de sauvegarder la configuration admin.")
+        # Suppression ancienne config si existe
+        all_conf = st.session_state.config_sheet.get_all_values()
+        key_rows = [i+1 for i,r in enumerate(all_conf) if r and r[0]=="semestre_filter"]
+        for r in reversed(key_rows):
+            st.session_state.config_sheet.delete_rows(r)
+        # Ajout nouvelle config
+        st.session_state.config_sheet.append_row(["semestre_filter", semestre_choice], value_input_option="USER_ENTERED")
+    except Exception:
+        pass
+
+    st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
     # Suppression globale
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
@@ -193,9 +199,9 @@ else:
     # Filtrage des semaines selon configuration admin
     all_semaines = st.session_state.semaines_data
     if st.session_state.semestre_filter == "Pairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
+        filtered_semaines = [s for s in all_semaines if s[2]=="SP"]
     elif st.session_state.semestre_filter == "Impairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SI"]
+        filtered_semaines = [s for s in all_semaines if s[2]=="SI"]
     else:
         filtered_semaines = all_semaines
 
@@ -299,10 +305,13 @@ else:
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
-    # ⚡ Fix TypeError text_area
+    # Texte sûr
     raison_value = st.session_state.get("raison_sel", "")
     if not isinstance(raison_value, str):
-        raison_value = str(raison_value or "")
+        try:
+            raison_value = str(raison_value)
+        except Exception:
+            raison_value = ""
     st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=raison_value)
 
     st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
@@ -347,8 +356,11 @@ else:
     # ======================
     commentaire_value = st.session_state.get("commentaire", commentaire_existant if 'commentaire_existant' in locals() else "")
     if not isinstance(commentaire_value, str):
-        commentaire_value = str(commentaire_value or "")
-    st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
+        try:
+            commentaire_value = str(commentaire_value)
+        except Exception:
+            commentaire_value = ""
+    st.text_area("💬 Commentaire global", key="commentaire", value=commentaire_value)
 
     # ======================
     # Enregistrement
