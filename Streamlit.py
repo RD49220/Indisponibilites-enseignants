@@ -65,7 +65,7 @@ if "semestre_filter" not in st.session_state:
     except:
         st.session_state.semestre_filter = "Toutes"
 
-st.write(f"Config chargée au démarrage : {st.session_state.semestre_filter}")
+#st.write(f"Config chargée au démarrage : {st.session_state.semestre_filter}")
 
 # ======================
 # CHARGEMENT DES DONNÉES EN SESSION
@@ -348,7 +348,7 @@ else:
         h1.markdown("**Semaine**")
         h2.markdown("**Jour**")
         h3.markdown("**Créneau**")
-        h4.markdown("**Raison/Commentaire**")
+        h4.markdown("**Raisons/Commentaires**")
         h5.markdown("**🗑️**")
 
         for r in st.session_state.ponctuels:
