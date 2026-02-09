@@ -14,7 +14,7 @@ ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot d
 # ======================
 # DEBUG SECRET
 # ======================
-if "ADMIN_PASSWORD" in st.secrets:
+if "admin_password" in st.secrets:
     st.success("✅ Secret admin_password détecté")
 else:
     st.error("❌ Secret admin_password INTROUVABLE")
