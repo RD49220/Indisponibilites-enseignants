@@ -128,11 +128,36 @@ def get_semaines_nums(selection):
     return result
 
 # ======================
-# SESSION STATE INIT
+# SESSION STATE INIT (FIX TYPE TEXT)
 # ======================
-for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_sel", "raison_sel", "_warning_doublon", "commentaire"]:
-    if k not in st.session_state:
-        st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
+#for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_sel", "raison_sel", "_warning_doublon", "commentaire"]:
+#    if k not in st.session_state:
+#        st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
+
+if "ponctuels" not in st.session_state:
+    st.session_state.ponctuels = []
+
+if "selected_user" not in st.session_state:
+    st.session_state.selected_user = ""
+
+if "semaines_sel" not in st.session_state:
+    st.session_state.semaines_sel = []
+
+if "jours_sel" not in st.session_state:
+    st.session_state.jours_sel = []
+
+if "creneaux_sel" not in st.session_state:
+    st.session_state.creneaux_sel = []
+
+# IMPORTANT → texte
+if "raison_sel" not in st.session_state:
+    st.session_state.raison_sel = ""
+
+if "commentaire" not in st.session_state:
+    st.session_state.commentaire = ""
+
+if "_warning_doublon" not in st.session_state:
+    st.session_state._warning_doublon = False
 
 if "semestre_filter" not in st.session_state:
     st.session_state.semestre_filter = "Toutes"  # filtre global Pairs / Impairs
