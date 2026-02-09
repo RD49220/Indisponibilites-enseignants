@@ -52,6 +52,20 @@ try:
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
+# ======================
+# LECTURE CONFIG AU DEMARRAGE
+# ======================
+if "semestre_filter" not in st.session_state:
+    try:
+        config_rows = st.session_state.config_sheet.get_all_values()
+        if len(config_rows) > 1 and config_rows[1]:
+            st.session_state.semestre_filter = config_rows[1][0]
+        else:
+            st.session_state.semestre_filter = "Toutes"
+    except:
+        st.session_state.semestre_filter = "Toutes"
+
+st.write(f"Config chargée au démarrage : {st.session_state.semestre_filter}")
 
 # ======================
 # CHARGEMENT DES DONNÉES EN SESSION
@@ -212,14 +226,6 @@ if mode == "Administrateur":
 else:
     st.title("📅 Indisponibilités enseignants")
 
-    # Chargement filtre depuis Config
-    try:
-        config_rows = st.session_state.config_sheet.get_all_values()
-        if len(config_rows) > 1:
-            st.session_state.semestre_filter = config_rows[1][0]
-            st.write(f"Config chargée : semestre_filter = {st.session_state.semestre_filter}")
-    except:
-        st.warning("⚠️ Impossible de lire Config. Utilisation du filtre par défaut.")
 
     # Filtrage des semaines selon configuration admin
     all_semaines = st.session_state.semaines_data
