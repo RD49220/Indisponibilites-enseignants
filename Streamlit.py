@@ -5,6 +5,10 @@ from datetime import datetime
 import uuid
 
 # ======================
+# DEBUG SECRET TEMPORAIRE
+# ======================
+st.write("Secrets détectés :", st.secrets)
+# ======================
 # CONFIG
 # ======================
 NOM_SHEET = "Indisponibilites-enseignants"
