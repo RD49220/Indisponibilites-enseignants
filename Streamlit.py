@@ -306,9 +306,7 @@ else:
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
     # ✅ Protection TypeError sur text_area
-    #raison_value = st.session_state.get("raison_sel", "")
-    #if raison_value is None or not isinstance(raison_value, str):
-    #    raison_value = str(raison_value)
+
 
     st.text_area("Raisons/Commentaires", key="raison_sel", height=80)
 
