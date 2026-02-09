@@ -10,7 +10,6 @@ import uuid
 NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
-ONGLET_CONFIG = "Config"
 ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
 
 # ======================
@@ -47,14 +46,6 @@ try:
         st.session_state.jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
     if "semaines_sheet" not in st.session_state:
         st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
-    # ======================
-    # CHARGEMENT OU CRÉATION DE L’ONGLET CONFIG
-    # ======================
-    try:
-        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet(ONGLET_CONFIG)
-    except gspread.exceptions.WorksheetNotFound:
-        client.open(NOM_SHEET).add_worksheet(title=ONGLET_CONFIG, rows=10, cols=2)
-        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet(ONGLET_CONFIG)
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
@@ -74,7 +65,7 @@ if "all_data" not in st.session_state:
     st.session_state.all_data = st.session_state.sheet.get_all_values()
 
 # ======================
-# DICTIONNAIRES
+# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
 # ======================
 CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
 CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
@@ -140,17 +131,8 @@ for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_s
     if k not in st.session_state:
         st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
 
-# Charger filtre semestre depuis Config si présent
-try:
-    config_values = st.session_state.config_sheet.get_all_values()
-    for row in config_values:
-        if len(row) >= 2 and row[0] == "semestre_filter":
-            st.session_state.semestre_filter = row[1]
-            break
-    else:
-        st.session_state.semestre_filter = "Toutes"
-except:
-    st.session_state.semestre_filter = "Toutes"
+if "semestre_filter" not in st.session_state:
+    st.session_state.semestre_filter = "Toutes"  # filtre global Pairs / Impairs
 
 # ======================
 # MODE UTILISATEUR / ADMIN
@@ -168,29 +150,23 @@ if mode == "Administrateur":
 
     st.success("✅ Mode Administrateur activé.")
 
-    # Choix semestre pair/impair (stocké globalement et dans Config)
+    # Choix semestre pair/impair
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
         index=["Toutes","Pairs","Impairs"].index(st.session_state.semestre_filter)
     )
     st.session_state.semestre_filter = semestre_choice
-
-    # Sauvegarde dans Config
-    try:
-        config_values = st.session_state.config_sheet.get_all_values()
-        found = False
-        for idx, row in enumerate(config_values):
-            if len(row) >= 2 and row[0] == "semestre_filter":
-                st.session_state.config_sheet.update_cell(idx+1, 2, semestre_choice)
-                found = True
-                break
-        if not found:
-            st.session_state.config_sheet.append_row(["semestre_filter", semestre_choice])
-    except:
-        pass
-
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
+
+    # Sauvegarde choix admin dans Config
+    try:
+        config_sheet = client.open(NOM_SHEET).worksheet("Config")
+    except gspread.WorksheetNotFound:
+        config_sheet = client.open(NOM_SHEET).add_worksheet(title="Config", rows=10, cols=2)
+
+    config_sheet.update("A1:B1", [["clé", "valeur"]])
+    config_sheet.update("A2:B2", [["semestre_filter", st.session_state.semestre_filter]])
 
     # Suppression globale
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
@@ -207,24 +183,30 @@ if mode == "Administrateur":
 else:
     st.title("📅 Indisponibilités enseignants")
 
-    # Filtrage des semaines selon configuration admin (colonne groupe)
+    # Lecture filtre semestre depuis Config
+    try:
+        config_sheet = client.open(NOM_SHEET).worksheet("Config")
+        data_config = config_sheet.get_all_values()
+        for row in data_config:
+            if row[0] == "semestre_filter":
+                st.session_state.semestre_filter = row[1]
+    except gspread.WorksheetNotFound:
+        pass
+
+    # Filtrage des semaines selon configuration admin
     all_semaines = st.session_state.semaines_data
     if st.session_state.semestre_filter == "Pairs":
-        filtered_semaines = [s for s in all_semaines if len(s) >= 3 and s[2] == "SP"]
+        filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
     elif st.session_state.semestre_filter == "Impairs":
-        filtered_semaines = [s for s in all_semaines if len(s) >= 3 and s[2] == "SI"]
+        filtered_semaines = [s for s in all_semaines if s[2] == "SI"]
     else:
         filtered_semaines = all_semaines
 
-    # ======================
-    # Choix utilisateur
-    # ======================
     users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
     options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
 
-    # Reset si changement enseignant
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
         st.session_state.ponctuels = []
@@ -234,7 +216,6 @@ else:
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
 
-    # Lecture des données existantes
     user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
     codes_sheet = set()
     commentaire_existant = ""
@@ -256,7 +237,6 @@ else:
             msg += f"Dernière modification effectuée le : {dernier_timestamp}"
         st.markdown(msg, unsafe_allow_html=True)
 
-    # Pré-remplissage ponctuels
     if not st.session_state.ponctuels:
         deja_vus = set()
         for r in user_rows:
@@ -318,7 +298,11 @@ else:
     st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
-    raison_value = str(st.session_state.get("raison_sel", ""))
+
+    # ⚡ Fix TypeError text_area
+    raison_value = st.session_state.get("raison_sel", "")
+    if not isinstance(raison_value, str):
+        raison_value = str(raison_value or "")
     st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=raison_value)
 
     st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
@@ -361,7 +345,9 @@ else:
     # ======================
     # Commentaire global
     # ======================
-    commentaire_value = str(st.session_state.get("commentaire", commentaire_existant if 'commentaire_existant' in locals() else ""))
+    commentaire_value = st.session_state.get("commentaire", "")
+    if not isinstance(commentaire_value, str):
+        commentaire_value = str(commentaire_value or "")
     st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
 
     # ======================
