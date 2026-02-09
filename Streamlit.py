@@ -52,6 +52,28 @@ try:
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
+# ======================
+# CHECK CONFIG & TEXTAREA
+# ======================
+try:
+    conf_rows = st.session_state.config_sheet.get_all_values()
+    conf_dict = {r[0]: r[1] for r in conf_rows if len(r) >= 2}
+    semestre_init = conf_dict.get("semestre_filter", "Toutes")
+    st.info(f"✅ Config chargée : semestre_filter = {semestre_init}")
+except Exception as e:
+    semestre_init = "Toutes"
+    st.error(f"❌ Impossible de lire la config : {e}")
+
+# Vérification text_area raison_sel et commentaire
+for key in ["raison_sel", "commentaire"]:
+    val = st.session_state.get(key, "")
+    if not isinstance(val, str):
+        try:
+            st.session_state[key] = str(val)
+            st.warning(f"⚠️ Conversion {key} en string")
+        except Exception:
+            st.session_state[key] = ""
+            st.error(f"❌ Impossible de convertir {key} en string")
 
 # ======================
 # CHARGEMENT DES DONNÉES EN SESSION
