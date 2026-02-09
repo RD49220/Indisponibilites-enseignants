@@ -47,11 +47,11 @@ try:
     if "semaines_sheet" not in st.session_state:
         st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
     if "config_sheet" not in st.session_state:
-        # onglet Config pour mémoriser semestre_filter
         st.session_state.config_sheet = client.open(NOM_SHEET).worksheet("Config")
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
+
 # ======================
 # LECTURE CONFIG AU DEMARRAGE
 # ======================
@@ -142,39 +142,26 @@ def get_semaines_nums(selection):
     return result
 
 # ======================
-# SESSION STATE INIT (FIX TYPE TEXT)
+# SESSION STATE INIT
 # ======================
-#for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_sel", "raison_sel", "_warning_doublon", "commentaire"]:
-#    if k not in st.session_state:
-#        st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
-
 if "ponctuels" not in st.session_state:
     st.session_state.ponctuels = []
-
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = ""
-
 if "semaines_sel" not in st.session_state:
     st.session_state.semaines_sel = []
-
 if "jours_sel" not in st.session_state:
     st.session_state.jours_sel = []
-
 if "creneaux_sel" not in st.session_state:
     st.session_state.creneaux_sel = []
-
-# IMPORTANT → texte
 if "raison_sel" not in st.session_state:
     st.session_state.raison_sel = ""
-
 if "commentaire" not in st.session_state:
     st.session_state.commentaire = ""
-
 if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
-
 if "semestre_filter" not in st.session_state:
-    st.session_state.semestre_filter = "Toutes"  # filtre global Pairs / Impairs
+    st.session_state.semestre_filter = "Toutes"
 
 # ======================
 # MODE UTILISATEUR / ADMIN
@@ -192,7 +179,6 @@ if mode == "Administrateur":
 
     st.success("✅ Mode Administrateur activé.")
 
-    # Choix semestre pair/impair (stocké globalement)
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
@@ -201,19 +187,15 @@ if mode == "Administrateur":
     st.session_state.semestre_filter = semestre_choice
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
-    # Sauvegarde dans Config (modification apportée)
     try:
         rows = st.session_state.config_sheet.get_all_values()
         if len(rows) < 2:
-            # Ligne 2 inexistante → append_row crée la ligne
             st.session_state.config_sheet.append_row([st.session_state.semestre_filter])
         else:
-            # Ligne 2 existe → update correctement la cellule A2
             st.session_state.config_sheet.update("A2", [[st.session_state.semestre_filter]])
     except Exception as e:
         st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
 
-    # Suppression globale
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
         n_rows = len(st.session_state.all_data)
         if n_rows > 1:
@@ -222,53 +204,13 @@ if mode == "Administrateur":
         else:
             st.info("La feuille est déjà vide après la ligne 1.")
 
-
-
-
-    # ======================
-    # Fonctions ajout
-    # ======================
-    def ajouter_creneaux(codes_sheet, user_code):
-        doublon = False
-        semaines_sel = get_semaines_nums(st.session_state.semaines_sel)
-        jours_codes = get_jours_codes(st.session_state.jours_sel)
-        creneaux_nums = get_creneaux_nums(st.session_state.creneaux_sel)
-        raison_texte = st.session_state.raison_sel
-
-        for s in semaines_sel:
-            for j_code in jours_codes:
-                for num in creneaux_nums:
-                    code = f"{user_code}_{j_code}_{num}_P"
-                    existe_streamlit = any(
-                        p["semaine"] == s and p["jour"] == j_code and p["creneau"] == num
-                        for p in st.session_state.ponctuels
-                    )
-                    existe_sheet = code in codes_sheet
-
-                    if existe_streamlit or existe_sheet:
-                        doublon = True
-                    else:
-                        st.session_state.ponctuels.append({
-                            "id": str(uuid.uuid4()),
-                            "semaine": s,
-                            "jour": j_code,
-                            "creneau": num,
-                            "raison": raison_texte
-                        })
-
-        st.session_state.semaines_sel = []
-        st.session_state.jours_sel = []
-        st.session_state.creneaux_sel = []
-        st.session_state.raison_sel = ""
-        st.session_state._warning_doublon = doublon
-
 # ======================
 # MODE UTILISATEUR
 # ======================
 else:
     st.title("📅 Indisponibilités enseignants")
 
-    # Message spécifique selon le filtre semestre
+    # Message spécifique semestre
     if st.session_state.semestre_filter == "Impairs":
         st.info("Choix pour le semestre Impairs. (La période correspond au S1)")
     elif st.session_state.semestre_filter == "Pairs":
@@ -276,7 +218,7 @@ else:
     else:
         st.info("Choix pour tous les semestres.")
 
-    # Filtrage des semaines selon configuration admin
+    # Filtrage semaines
     all_semaines = st.session_state.semaines_data
     if st.session_state.semestre_filter == "Pairs":
         filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
@@ -291,19 +233,38 @@ else:
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
 
-    # Reset si changement enseignant
+    # 🔄 Reset et reload créneaux depuis Google Sheet si changement utilisateur
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
+
+        # Rechargement depuis la feuille
+        user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
         st.session_state.ponctuels = []
+        deja_vus = set()
+        for r in user_rows:
+            if len(r) > 5 and r[5].endswith("_P"):
+                key = (r[1], r[2], r[3])
+                if key not in deja_vus:
+                    deja_vus.add(key)
+                    st.session_state.ponctuels.append({
+                        "id": str(uuid.uuid4()),
+                        "semaine": r[1],
+                        "jour": r[2],
+                        "creneau": r[3],
+                        "raison": r[6] if len(r) > 6 else ""
+                    })
+
+        # Reset sélections
         st.session_state.semaines_sel = []
         st.session_state.jours_sel = []
         st.session_state.creneaux_sel = []
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
-        st.rerun()
 
-    # Lecture des données existantes
-    user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
+        st.rerun()  # 🔹 Rerun pour afficher les derniers créneaux
+
+    # Lecture des données existantes pour affichage et doublons
+    user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
     codes_sheet = set()
     commentaire_existant = ""
     dernier_timestamp = None
@@ -324,24 +285,6 @@ else:
             msg += f"Dernière modification effectuée le : {dernier_timestamp}"
         st.markdown(msg, unsafe_allow_html=True)
 
-    # Pré-remplissage ponctuels
-    if not st.session_state.ponctuels:
-        deja_vus = set()
-        for r in user_rows:
-            if len(r) > 5 and r[5].endswith("_P"):
-                key = (r[1], r[2], r[3])
-                if key not in deja_vus:
-                    deja_vus.add(key)
-                    st.session_state.ponctuels.append({
-                        "id": str(uuid.uuid4()),
-                        "semaine": r[1],
-                        "jour": r[2],
-                        "creneau": r[3],
-                        "raison": r[6] if len(r) > 6 else ""
-                    })
-
-    st.divider()
-
     # ======================
     # Fonctions ajout
     # ======================
@@ -378,7 +321,6 @@ else:
         st.session_state.creneaux_sel = []
         st.session_state.raison_sel = ""
         st.session_state._warning_doublon = doublon
-
     # ======================
     # UI ajout
     # ======================
@@ -474,3 +416,4 @@ else:
                 now
             ], value_input_option="USER_ENTERED")
         st.success("✅ Indisponibilités enregistrées")
+
