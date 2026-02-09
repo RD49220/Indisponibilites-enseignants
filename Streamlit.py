@@ -11,6 +11,7 @@ NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
 ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
+
 # ======================
 # DEBUG SECRET
 # ======================
@@ -124,14 +125,24 @@ def get_semaines_nums(selection):
     return result
 
 # ======================
-# SESSION STATE INIT
+# SESSION STATE INIT SÉCURISÉ
 # ======================
-for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_sel", "raison_sel", "_warning_doublon", "commentaire"]:
-    if k not in st.session_state:
-        st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
+if "ponctuels" not in st.session_state or not isinstance(st.session_state["ponctuels"], list):
+    st.session_state["ponctuels"] = []
 
-if "semestre_filter" not in st.session_state:
-    st.session_state.semestre_filter = "Toutes"  # filtre global Pairs / Impairs
+for k in ["semaines_sel", "jours_sel", "creneaux_sel"]:
+    if k not in st.session_state or not isinstance(st.session_state[k], list):
+        st.session_state[k] = []
+
+for k in ["raison_sel", "commentaire", "selected_user"]:
+    if k not in st.session_state or not isinstance(st.session_state[k], str):
+        st.session_state[k] = ""
+
+if "_warning_doublon" not in st.session_state or not isinstance(st.session_state["_warning_doublon"], bool):
+    st.session_state["_warning_doublon"] = False
+
+if "semestre_filter" not in st.session_state or not isinstance(st.session_state["semestre_filter"], str):
+    st.session_state["semestre_filter"] = "Toutes"
 
 # ======================
 # MODE UTILISATEUR / ADMIN
@@ -281,7 +292,14 @@ else:
     st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
-    st.text_area("Raisons/Commentaires", key="raison_sel", height=80, value=st.session_state.get("raison_sel", ""))
+
+    # ✅ raison sécurisée
+    st.text_area(
+        "Raisons/Commentaires",
+        key="raison_sel",
+        height=80,
+        value=st.session_state["raison_sel"]
+    )
 
     st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
 
@@ -321,11 +339,15 @@ else:
     st.divider()
 
     # ======================
-    # Commentaire global
+    # Commentaire global sécurisé
     # ======================
+    initial_comment = st.session_state["commentaire"]
+    if not initial_comment and 'commentaire_existant' in locals():
+        initial_comment = commentaire_existant
+
     commentaire = st.text_area(
         "💬 Commentaire global",
-        value=st.session_state.get("commentaire", commentaire_existant if 'commentaire_existant' in locals() else ""),
+        value=initial_comment,
         key="commentaire"
     )
 
