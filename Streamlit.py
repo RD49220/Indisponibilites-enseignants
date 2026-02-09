@@ -33,80 +33,64 @@ creds = Credentials.from_service_account_info(
 client = gspread.authorize(creds)
 
 # ======================
-# CHARGEMENT DES FEUILLES
+# FONCTION POUR CHARGER LES DONNÉES (CACHEE)
+# ======================
+@st.cache_data
+def load_sheet_data(sheet_name, onglet_name):
+    sheet = client.open(sheet_name).worksheet(onglet_name)
+    return sheet.get_all_values()
+
+# ======================
+# CHARGEMENT DES DONNÉES
 # ======================
 try:
-    if "sheet" not in st.session_state:
-        st.session_state.sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
-    if "users_sheet" not in st.session_state:
-        st.session_state.users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
-    if "creneaux_sheet" not in st.session_state:
-        st.session_state.creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
-    if "jours_sheet" not in st.session_state:
-        st.session_state.jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
-    if "semaines_sheet" not in st.session_state:
-        st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
-    if "config_sheet" not in st.session_state:
-        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet("Config")
+    all_data = load_sheet_data(NOM_SHEET, ONGLET_DONNEES)
+    users_data = load_sheet_data(NOM_SHEET, ONGLET_USERS)[1:]
+    creneaux_data = load_sheet_data(NOM_SHEET, "Creneaux")[1:]
+    jours_data = load_sheet_data(NOM_SHEET, "Jours")[1:]
+    semaines_data = load_sheet_data(NOM_SHEET, "Semaines")[1:]
+    config_sheet = client.open(NOM_SHEET).worksheet("Config")  # pas de cache
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
 
 # ======================
-# CACHE DES DONNÉES
+# CONFIG SEMESTRE AU DEMARRAGE
 # ======================
-@st.cache_data
-def load_sheet(sheet):
-    return sheet.get_all_values()
+if "semestre_filter" not in st.session_state:
+    try:
+        config_rows = config_sheet.get_all_values()
+        st.session_state.semestre_filter = config_rows[1][0] if len(config_rows) > 1 and config_rows[1] else "Toutes"
+    except:
+        st.session_state.semestre_filter = "Toutes"
 
-# Données statiques légères
-st.session_state.users_data = load_sheet(st.session_state.users_sheet)[1:]
-st.session_state.creneaux_data = load_sheet(st.session_state.creneaux_sheet)[1:]
-st.session_state.jours_data = load_sheet(st.session_state.jours_sheet)[1:]
-st.session_state.semaines_data = load_sheet(st.session_state.semaines_sheet)[1:]
+st.write(f"Config chargée au démarrage : {st.session_state.semestre_filter}")
 
 # ======================
 # SESSION STATE INIT
 # ======================
-if "ponctuels" not in st.session_state:
-    st.session_state.ponctuels = []
-
-if "selected_user" not in st.session_state:
-    st.session_state.selected_user = ""
-
-if "semaines_sel" not in st.session_state:
-    st.session_state.semaines_sel = []
-
-if "jours_sel" not in st.session_state:
-    st.session_state.jours_sel = []
-
-if "creneaux_sel" not in st.session_state:
-    st.session_state.creneaux_sel = []
-
-if "raison_sel" not in st.session_state:
-    st.session_state.raison_sel = ""
-
-if "commentaire" not in st.session_state:
-    st.session_state.commentaire = ""
-
-if "_warning_doublon" not in st.session_state:
-    st.session_state._warning_doublon = False
-
-if "semestre_filter" not in st.session_state:
-    st.session_state.semestre_filter = "Toutes"
+for key, default in [
+    ("ponctuels", []),
+    ("selected_user", ""),
+    ("semaines_sel", []),
+    ("jours_sel", []),
+    ("creneaux_sel", []),
+    ("raison_sel", ""),
+    ("commentaire", ""),
+    ("_warning_doublon", False)
+]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # ======================
-# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
+# DICTIONNAIRES UTILES
 # ======================
-CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
-CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
-
-JOURS_LABELS = {r[0]: r[1] for r in st.session_state.jours_data if len(r) >= 2}
-JOURS_GROUPES = {r[0]: r[2] for r in st.session_state.jours_data if len(r) >= 3}
-
-SEMAINES_LABELS = {r[0]: r[1] for r in st.session_state.semaines_data if len(r) >= 2}
-SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r) >= 3}
-
+CRENEAUX_LABELS = {r[0]: r[1] for r in creneaux_data if len(r) >= 2}
+CRENEAUX_GROUPES = {r[0]: r[2] for r in creneaux_data if len(r) >= 3}
+JOURS_LABELS = {r[0]: r[1] for r in jours_data if len(r) >= 2}
+JOURS_GROUPES = {r[0]: r[2] for r in jours_data if len(r) >= 3}
+SEMAINES_LABELS = {r[0]: r[1] for r in semaines_data if len(r) >= 2}
+SEMAINES_GROUPES = {r[0]: r[2] for r in semaines_data if len(r) >= 3}
 CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
 CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
 
@@ -116,13 +100,11 @@ CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
 def get_creneaux_nums(selection):
     result = []
     for c in selection:
-        if c not in CRENEAUX_LABELS:
-            continue
+        if c not in CRENEAUX_LABELS: continue
         code_num = CRENEAUX_LABELS[c]
         groupe = CRENEAUX_GROUPES[c]
         if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.creneaux_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
+            result.extend([r[1] for r in creneaux_data if r[2]==groupe and not r[1].startswith("ALL_")])
         else:
             result.append(code_num)
     return result
@@ -130,13 +112,11 @@ def get_creneaux_nums(selection):
 def get_jours_codes(selection):
     result = []
     for label in selection:
-        if label not in JOURS_LABELS:
-            continue
+        if label not in JOURS_LABELS: continue
         code_num = JOURS_LABELS[label]
         groupe = JOURS_GROUPES[label]
         if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.jours_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
+            result.extend([r[1] for r in jours_data if r[2]==groupe and not r[1].startswith("ALL_")])
         else:
             result.append(code_num)
     return result
@@ -144,13 +124,11 @@ def get_jours_codes(selection):
 def get_semaines_nums(selection):
     result = []
     for label in selection:
-        if label not in SEMAINES_LABELS:
-            continue
+        if label not in SEMAINES_LABELS: continue
         code_num = SEMAINES_LABELS[label]
         groupe = SEMAINES_GROUPES[label]
         if code_num.startswith("ALL_"):
-            nums_du_groupe = [r[1] for r in st.session_state.semaines_data if r[2] == groupe and not r[1].startswith("ALL_")]
-            result.extend(nums_du_groupe)
+            result.extend([r[1] for r in semaines_data if r[2]==groupe and not r[1].startswith("ALL_")])
         else:
             result.append(code_num)
     return result
@@ -161,7 +139,7 @@ def get_semaines_nums(selection):
 mode = st.radio("Mode", ["Utilisateur", "Administrateur"])
 
 # ======================
-# MODE ADMIN
+# ADMIN
 # ======================
 if mode == "Administrateur":
     pwd_input = st.text_input("Entrez le mot de passe administrateur :", type="password")
@@ -173,79 +151,50 @@ if mode == "Administrateur":
 
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
-        ["Toutes", "Pairs", "Impairs"],
+        ["Toutes","Pairs","Impairs"],
         index=["Toutes","Pairs","Impairs"].index(st.session_state.semestre_filter)
     )
     st.session_state.semestre_filter = semestre_choice
-    st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
     # Sauvegarde dans Config
     try:
-        rows = st.session_state.config_sheet.get_all_values()
-        if len(rows) < 2:
-            st.session_state.config_sheet.append_row([st.session_state.semestre_filter])
+        rows = config_sheet.get_all_values()
+        if len(rows)<2:
+            config_sheet.append_row([st.session_state.semestre_filter])
         else:
-            st.session_state.config_sheet.update("A2", [[st.session_state.semestre_filter]])
+            config_sheet.update("A2", [[st.session_state.semestre_filter]])
     except Exception as e:
         st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
 
-    # Suppression globale
-    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
-        n_rows = len(st.session_state.sheet.get_all_values())
-        if n_rows > 1:
-            st.session_state.sheet.delete_rows(2, n_rows)
-            st.success("✅ Toutes les lignes à partir de la ligne 2 ont été supprimées !")
-        else:
-            st.info("La feuille est déjà vide après la ligne 1.")
-
 # ======================
-# MODE UTILISATEUR
+# UTILISATEUR
 # ======================
 else:
     st.title("📅 Indisponibilités enseignants")
 
     # Message semestre
-    if st.session_state.semestre_filter == "Impairs":
+    if st.session_state.semestre_filter=="Impairs":
         st.info("Choix pour le semestre Impairs. (La période correspond au S1)")
-    elif st.session_state.semestre_filter == "Pairs":
+    elif st.session_state.semestre_filter=="Pairs":
         st.info("Choix pour le semestre Pair. (La période correspond au S6)")
     else:
         st.info("Choix pour tous les semestres.")
 
-    # Filtrage des semaines selon semestre
-    all_semaines = st.session_state.semaines_data
-    if st.session_state.semestre_filter == "Pairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
-    elif st.session_state.semestre_filter == "Impairs":
-        filtered_semaines = [s for s in all_semaines if s[2] == "SI"]
+    # Filtrage semaines
+    if st.session_state.semestre_filter=="Pairs":
+        filtered_semaines = [s for s in semaines_data if s[2]=="SP"]
+    elif st.session_state.semestre_filter=="Impairs":
+        filtered_semaines = [s for s in semaines_data if s[2]=="SI"]
     else:
-        filtered_semaines = all_semaines
+        filtered_semaines = semaines_data
 
-    # Choix utilisateur
-    users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
+    # Choix enseignant
+    users = [{"code":r[0],"nom":r[1],"prenom":r[2]} for r in users_data if len(r)>=3]
     options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
 
-    # ======================
-    # LOAD all_data et indexation
-    # ======================
-    @st.cache_data
-    def index_all_data(sheet):
-        all_data = sheet.get_all_values()
-        users_dict = {}
-        for r in all_data[1:]:
-            user = r[0]
-            users_dict.setdefault(user, []).append(r)
-        return users_dict
-
-    users_rows_dict = index_all_data(st.session_state.sheet)
-    user_rows = users_rows_dict.get(user_code, [])
-    codes_sheet = set(r[5] for r in user_rows if len(r) > 5 and r[5].endswith("_P"))
-    commentaire_existant = user_rows[-1][6] if user_rows else ""
-    dernier_timestamp = max([r[8] for r in user_rows if len(r) > 8 and r[8]], default=None)
-
-    # Reset si changement enseignant
+    # Rafraîchissement si changement d'utilisateur
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
         st.session_state.ponctuels = []
@@ -254,14 +203,32 @@ else:
         st.session_state.creneaux_sel = []
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
-        st.rerun()
+        st.rerun()  # ⚡ rafraîchissement automatique
+
+    # Lecture données existantes
+    user_rows = [r for r in all_data[1:] if r[0]==user_code]
+    codes_sheet = set()
+    commentaire_existant = ""
+    dernier_timestamp = None
+    for r in user_rows:
+        if len(r)>5 and r[5].endswith("_P"):
+            codes_sheet.add(r[5])
+            commentaire_existant = r[6] if len(r)>6 else ""
+        if len(r)>8 and r[8]:
+            if dernier_timestamp is None or r[8]>dernier_timestamp:
+                dernier_timestamp = r[8]
+
+    if codes_sheet:
+        msg = "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>Toute modification effacera les anciennes données lors de l'enregistrement.<br>"
+        if dernier_timestamp: msg += f"Dernière modification effectuée le : {dernier_timestamp}"
+        st.markdown(msg, unsafe_allow_html=True)
 
     # Pré-remplissage ponctuels
     if not st.session_state.ponctuels:
-        deja_vus = set()
+        deja_vus=set()
         for r in user_rows:
-            if len(r) > 5 and r[5].endswith("_P"):
-                key = (r[1], r[2], r[3])
+            if len(r)>5 and r[5].endswith("_P"):
+                key=(r[1],r[2],r[3])
                 if key not in deja_vus:
                     deja_vus.add(key)
                     st.session_state.ponctuels.append({
@@ -269,7 +236,7 @@ else:
                         "semaine": r[1],
                         "jour": r[2],
                         "creneau": r[3],
-                        "raison": r[6] if len(r) > 6 else ""
+                        "raison": r[6] if len(r)>6 else ""
                     })
 
  # ======================
