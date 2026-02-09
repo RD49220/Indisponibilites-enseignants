@@ -5,12 +5,6 @@ from datetime import datetime
 import uuid
 
 # ======================
-# DEBUG SECRET TEMPORAIRE
-# ======================
-st.write("Secrets détectés :", st.secrets)
-st.write("Secrets disponibles :", list(st.secrets.keys()))
-
-# ======================
 # CONFIG
 # ======================
 NOM_SHEET = "Indisponibilites-enseignants"
