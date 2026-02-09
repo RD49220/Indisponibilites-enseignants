@@ -228,6 +228,13 @@ if mode == "Administrateur":
 # ======================
 else:
     st.title("📅 Indisponibilités enseignants")
+# Message spécifique selon le filtre semestre
+if st.session_state.semestre_filter == "Impairs":
+    st.info("Choix pour le semestre Impairs. (La période correspond au S1)")
+elif st.session_state.semestre_filter == "Pairs":
+    st.info("Choix pour le semestre Pair. (La période correspond au S6)")
+else:
+    st.info("Choix pour tous les semestres.")
 
 
     # Filtrage des semaines selon configuration admin
