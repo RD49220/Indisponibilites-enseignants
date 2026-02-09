@@ -201,15 +201,17 @@ if mode == "Administrateur":
     st.session_state.semestre_filter = semestre_choice
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
-    # Sauvegarde dans Config
+    # Sauvegarde dans Config (modification apportée)
     try:
         rows = st.session_state.config_sheet.get_all_values()
         if len(rows) < 2:
+            # Ligne 2 inexistante → append_row crée la ligne
             st.session_state.config_sheet.append_row([st.session_state.semestre_filter])
         else:
-            st.session_state.config_sheet.update("A2", st.session_state.semestre_filter)
-    except:
-        st.warning("⚠️ Impossible de sauvegarder le filtre dans Config.")
+            # Ligne 2 existe → update correctement la cellule A2
+            st.session_state.config_sheet.update("A2", [[st.session_state.semestre_filter]])
+    except Exception as e:
+        st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
 
     # Suppression globale
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
@@ -219,6 +221,7 @@ if mode == "Administrateur":
             st.success("✅ Toutes les lignes à partir de la ligne 2 ont été supprimées !")
         else:
             st.info("La feuille est déjà vide après la ligne 1.")
+
 
 # ======================
 # MODE UTILISATEUR
