@@ -132,7 +132,7 @@ for k in ["ponctuels", "selected_user", "semaines_sel", "jours_sel", "creneaux_s
         st.session_state[k] = [] if k.endswith("_sel") or k == "ponctuels" else "" if k != "_warning_doublon" else False
 
 if "semestre_filter" not in st.session_state:
-    st.session_state.semestre_filter = "Toutes"  # filtre global Pairs / Impairs
+    st.session_state.semestre_filter = "Toutes"
 
 # ======================
 # MODE UTILISATEUR / ADMIN
@@ -150,7 +150,6 @@ if mode == "Administrateur":
 
     st.success("✅ Mode Administrateur activé.")
 
-    # Choix semestre pair/impair (stocké globalement)
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
@@ -159,7 +158,6 @@ if mode == "Administrateur":
     st.session_state.semestre_filter = semestre_choice
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
-    # Suppression globale
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
         n_rows = len(st.session_state.all_data)
         if n_rows > 1:
@@ -174,12 +172,12 @@ if mode == "Administrateur":
 else:
     st.title("📅 Indisponibilités enseignants")
 
-    # Filtrage des semaines selon configuration admin
+    # Filtrage par groupe (SP / SI) selon choix admin
     all_semaines = st.session_state.semaines_data
     if st.session_state.semestre_filter == "Pairs":
-        filtered_semaines = [s for s in all_semaines if s[0].isdigit() and int(s[0]) % 2 == 0]
+        filtered_semaines = [s for s in all_semaines if len(s) > 2 and s[2] == "SP"]
     elif st.session_state.semestre_filter == "Impairs":
-        filtered_semaines = [s for s in all_semaines if s[0].isdigit() and int(s[0]) % 2 == 1]
+        filtered_semaines = [s for s in all_semaines if len(s) > 2 and s[2] == "SI"]
     else:
         filtered_semaines = all_semaines
 
@@ -188,7 +186,6 @@ else:
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
 
-    # Reset si changement enseignant
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
         st.session_state.ponctuels = []
@@ -198,7 +195,6 @@ else:
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
 
-    # Lecture des données existantes
     user_rows = [r for r in st.session_state.all_data[1:] if r[0] == user_code]
     codes_sheet = set()
     commentaire_existant = ""
@@ -220,7 +216,6 @@ else:
             msg += f"Dernière modification effectuée le : {dernier_timestamp}"
         st.markdown(msg, unsafe_allow_html=True)
 
-    # Pré-remplissage ponctuels
     if not st.session_state.ponctuels:
         deja_vus = set()
         for r in user_rows:
@@ -239,7 +234,7 @@ else:
     st.divider()
 
     # ======================
-    # Fonctions ajout
+    # Fonctions ajout et UI
     # ======================
     def ajouter_creneaux(codes_sheet, user_code):
         doublon = False
@@ -275,9 +270,6 @@ else:
         st.session_state.raison_sel = ""
         st.session_state._warning_doublon = doublon
 
-    # ======================
-    # UI ajout
-    # ======================
     st.subheader("➕ Créneaux ponctuels")
     st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
