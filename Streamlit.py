@@ -11,6 +11,13 @@ NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
 ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
+# ======================
+# DEBUG SECRET
+# ======================
+if "admin_password" in st.secrets:
+    st.success("✅ Secret admin_password détecté")
+else:
+    st.error("❌ Secret admin_password INTROUVABLE")
 
 # ======================
 # AUTH GOOGLE
