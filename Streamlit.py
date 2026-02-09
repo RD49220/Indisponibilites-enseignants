@@ -15,10 +15,10 @@ ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot d
 # ======================
 # DEBUG SECRET
 # ======================
-if "admin_password" in st.secrets:
-    st.success("✅ Secret admin_password détecté")
-else:
-    st.error("❌ Secret admin_password INTROUVABLE")
+#if "admin_password" in st.secrets:
+#    st.success("✅ Secret admin_password détecté")
+#else:
+#    st.error("❌ Secret admin_password INTROUVABLE")
 
 # ======================
 # AUTH GOOGLE
@@ -341,7 +341,7 @@ else:
     # ======================
     # Tableau + suppression individuelle
     # ======================
-    st.subheader("📝 Créneaux ajoutés")
+    st.subheader("📝 Créneaux ajoutés/enregistrés")
     if st.session_state.ponctuels:
         delete_id = None
         h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 1, 1])
