@@ -165,6 +165,7 @@ def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
 def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
     """
     Génère un email professionnel avec un tableau HTML récapitulatif des indisponibilités.
+    Supprime les colonnes/lignes vides et remplace les valeurs manquantes par '-' ou 'N/A'.
     """
     # Début HTML
     html = f"""
@@ -186,10 +187,15 @@ def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
 
     if ponc:
         for p in ponc:
-            semaine = p.get("semaine","")
-            jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
-            creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
-            raison = p.get("raison","")
+            semaine = p.get("semaine","").strip() or "N/A"
+            jour = CODE_TO_JOUR.get(p.get("jour","").strip(), "N/A")
+            creneau = CODE_TO_CREN.get(p.get("creneau","").strip(), "N/A")
+            raison = p.get("raison","").strip() or "-"
+            
+            # ignorer les créneaux complètement vides
+            if semaine == "N/A" and jour == "N/A" and creneau == "N/A":
+                continue
+            
             html += f"""
             <tr>
                 <td>{semaine}</td>
@@ -208,7 +214,7 @@ def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
     html += f"""
         </tbody>
     </table>
-    <p><strong>Commentaire global :</strong> {commentaire_global}</p>
+    <p><strong>Commentaire global :</strong> {commentaire_global.strip() or '-'}</p>
     <p>Cordialement,<br/>Service Planning GEII</p>
     </body>
     </html>
