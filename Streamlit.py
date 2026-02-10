@@ -142,6 +142,25 @@ def get_semaines_nums(selection):
         else:
             result.append(code_num)
     return result
+def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
+    """
+    Génère un message professionnel récapitulatif des indisponibilités.
+    """
+    lines = [
+        f"Bonjour {user_code},\n",
+        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :\n",
+        "Semaine | Jour | Créneau | Commentaire",
+        "----------------------------------------"
+    ]
+    for p in ponc:
+        semaine = p.get("semaine", "")
+        jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
+        creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
+        raison = p.get("raison","")
+        lines.append(f"{semaine} | {jour} | {creneau} | {raison}")
+    lines.append(f"\nCommentaire global : {commentaire_global}\n")
+    lines.append("Cordialement,\nService Planning GEII")
+    return "\n".join(lines)
 
 # ======================
 # SESSION STATE INIT
@@ -284,14 +303,23 @@ if st.button("💾 Enregistrer"):
     st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     st.success("✅ Indisponibilités enregistrées dans Google Sheets")
 
-    # ======================
-    # Envoi Brevo
-    # ======================
-    destinataire = st.session_state.email_utilisateur
+# ======================
+# Envoi Brevo
+# ======================
+destinataire = st.session_state.email_utilisateur
+if destinataire:  # Vérifie qu'un mail a été saisi
     sujet = f"Récapitulatif des indisponibilités - {now}"
-    contenu = "test"  # Plus tard remplacer par le vrai récap
+    contenu = generer_contenu_email(
+        user_code,
+        st.session_state.ponctuels,
+        st.session_state.commentaire,
+        now
+    )
     success, msg = envoyer_email(destinataire, sujet, contenu)
     if success:
         st.success(f"✅ Email envoyé à {destinataire}")
     else:
         st.error(f"❌ Erreur envoi mail : {msg}")
+else:
+    st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail pour recevoir le récapitulatif.")
+
