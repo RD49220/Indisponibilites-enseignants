@@ -163,7 +163,7 @@ def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
     lines.append("Cordialement,\nService Planning GEII")
     return "\n".join(lines)
 
-def generer_contenu_email_liste(user_code, ponc, commentaire_global, timestamp):
+def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
     """
     Génère un email professionnel avec un récapitulatif sous forme de liste,
     similaire à la vue Streamlit "Créneaux ajoutés/enregistrés".
