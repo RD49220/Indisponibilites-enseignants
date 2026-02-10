@@ -142,6 +142,7 @@ def get_semaines_nums(selection):
         else:
             result.append(code_num)
     return result
+
 def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
     """
     Génère un message professionnel récapitulatif des indisponibilités.
@@ -277,11 +278,13 @@ st.text_area("💬 Commentaire global", value=st.session_state.commentaire, key=
 # ======================
 if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Suppression anciennes lignes utilisateur
+    
+    # --- Suppression anciennes lignes utilisateur ---
     rows_to_delete = [i for i,r in enumerate(st.session_state.all_data[1:], start=2) if r[0]==user_code]
     for i in sorted(rows_to_delete, reverse=True):
         st.session_state.sheet.delete_rows(i)
-    # Ajout des nouveaux créneaux
+    
+    # --- Ajout des nouveaux créneaux ---
     rows_to_append = []
     for p in st.session_state.ponctuels:
         rows_to_append.append([
@@ -303,23 +306,20 @@ if st.button("💾 Enregistrer"):
     st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     st.success("✅ Indisponibilités enregistrées dans Google Sheets")
 
-# ======================
-# Envoi Brevo
-# ======================
-destinataire = st.session_state.email_utilisateur
-if destinataire:  # Vérifie qu'un mail a été saisi
-    sujet = f"Récapitulatif des indisponibilités - {now}"
-    contenu = generer_contenu_email(
-        user_code,
-        st.session_state.ponctuels,
-        st.session_state.commentaire,
-        now
-    )
-    success, msg = envoyer_email(destinataire, sujet, contenu)
-    if success:
-        st.success(f"✅ Email envoyé à {destinataire}")
+    # --- Envoi Brevo ---
+    destinataire = st.session_state.email_utilisateur
+    if destinataire:
+        sujet = f"Récapitulatif des indisponibilités - {now}"
+        contenu = generer_contenu_email(
+            user_code,
+            st.session_state.ponctuels,
+            st.session_state.commentaire,
+            now
+        )
+        success, msg = envoyer_email(destinataire, sujet, contenu)
+        if success:
+            st.success(f"✅ Email envoyé à {destinataire}")
+        else:
+            st.error(f"❌ Erreur envoi mail : {msg}")
     else:
-        st.error(f"❌ Erreur envoi mail : {msg}")
-else:
-    st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail pour recevoir le récapitulatif.")
-
+        st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail pour recevoir le récapitulatif.")
