@@ -8,7 +8,7 @@ import uuid
 import smtplib
 from email.message import EmailMessage
 # ===================
-st.write(st.secrets["EMAIL_FROM"])
+
 
 
 # ======================
