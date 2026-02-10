@@ -162,10 +162,11 @@ def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
     lines.append(f"\nCommentaire global : {commentaire_global}\n")
     lines.append("Cordialement,\nService Planning GEII")
     return "\n".join(lines)
+
 def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
     """
     Génère un email professionnel avec un tableau HTML récapitulatif des indisponibilités.
-    Supprime les colonnes/lignes vides et utilise les labels corrects.
+    Ignore les lignes complètement vides.
     """
     html = f"""
     <html>
@@ -184,19 +185,21 @@ def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
         <tbody>
     """
 
-    if ponc:
-        for p in ponc:
+    # On filtre les créneaux incomplets
+    ponc_filtres = [p for p in ponc if any([
+        p.get("semaine","").strip(),
+        p.get("jour","").strip(),
+        p.get("creneau","").strip()
+    ])]
+
+    if ponc_filtres:
+        for p in ponc_filtres:
             semaine = p.get("semaine","").strip() or "-"
-            # On récupère directement le label depuis les dictionnaires
             jour_code = p.get("jour","").strip()
             creneau_code = p.get("creneau","").strip()
             jour = CODE_TO_JOUR.get(jour_code, jour_code) or "-"
             creneau = CODE_TO_CREN.get(creneau_code, creneau_code) or "-"
             raison = p.get("raison","").strip() or "-"
-
-            # ignorer les lignes complètement vides
-            if semaine == "-" and jour == "-" and creneau == "-":
-                continue
 
             html += f"""
             <tr>
@@ -221,7 +224,6 @@ def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
     </body>
     </html>
     """
-
     return html
 
 
