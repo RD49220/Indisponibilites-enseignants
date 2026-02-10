@@ -163,68 +163,35 @@ def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
     lines.append("Cordialement,\nService Planning GEII")
     return "\n".join(lines)
 
-def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
+def generer_contenu_email_liste(user_code, ponc, commentaire_global, timestamp):
     """
-    Génère un email professionnel avec un tableau HTML récapitulatif des indisponibilités.
-    Ignore les lignes complètement vides.
+    Génère un email professionnel avec un récapitulatif sous forme de liste,
+    similaire à la vue Streamlit "Créneaux ajoutés/enregistrés".
     """
-    html = f"""
-    <html>
-    <body>
-    <p>Bonjour {user_code},</p>
-    <p>Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :</p>
-    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
-        <thead style="background-color:#f2f2f2;">
-            <tr>
-                <th>Semaine</th>
-                <th>Jour</th>
-                <th>Créneau</th>
-                <th>Commentaire</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
+    lines = [
+        f"Bonjour {user_code},",
+        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :",
+        "",
+    ]
 
-    # On filtre les créneaux incomplets
-    ponc_filtres = [p for p in ponc if any([
-        p.get("semaine","").strip(),
-        p.get("jour","").strip(),
-        p.get("creneau","").strip()
-    ])]
-
-    if ponc_filtres:
-        for p in ponc_filtres:
-            semaine = p.get("semaine","").strip() or "-"
-            jour_code = p.get("jour","").strip()
-            creneau_code = p.get("creneau","").strip()
-            jour = CODE_TO_JOUR.get(jour_code, jour_code) or "-"
-            creneau = CODE_TO_CREN.get(creneau_code, creneau_code) or "-"
-            raison = p.get("raison","").strip() or "-"
-
-            html += f"""
-            <tr>
-                <td>{semaine}</td>
-                <td>{jour}</td>
-                <td>{creneau}</td>
-                <td>{raison}</td>
-            </tr>
-            """
+    if ponc:
+        for p in ponc:
+            semaine = p.get("semaine","")
+            jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
+            creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
+            raison = p.get("raison","-")
+            lines.append(f"- Semaine {semaine} | Jour {jour} | Créneau {creneau} | Commentaire : {raison}")
     else:
-        html += """
-        <tr>
-            <td colspan="4" style="text-align:center;">Aucune indisponibilité enregistrée</td>
-        </tr>
-        """
+        lines.append("Aucune indisponibilité enregistrée.")
 
-    html += f"""
-        </tbody>
-    </table>
-    <p><strong>Commentaire global :</strong> {commentaire_global.strip() or '-'}</p>
-    <p>Cordialement,<br/>Service Planning GEII</p>
-    </body>
-    </html>
-    """
-    return html
+    lines.append("")
+    lines.append(f"Commentaire global : {commentaire_global or '-'}")
+    lines.append("")
+    lines.append("Cordialement,")
+    lines.append("Service Planning GEII")
+
+    return "\n".join(lines)
+
 
 
 # ======================
