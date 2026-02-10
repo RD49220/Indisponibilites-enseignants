@@ -213,15 +213,39 @@ label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[label]
 
 # Reset si utilisateur change
+#if st.session_state.selected_user != user_code:
+#    st.session_state.selected_user = user_code
+#    st.session_state.ponctuels = []
+ #   st.session_state.semaines_sel = []
+  #  st.session_state.jours_sel = []
+#    st.session_state.creneaux_sel = []
+#    st.session_state.raison_sel = ""
+#    st.session_state.commentaire = ""
+#    st.session_state.email_utilisateur = ""
+
+if "selected_user" not in st.session_state:
+    st.session_state.selected_user = None
+
+if "ponctuels" not in st.session_state:
+    st.session_state.ponctuels = []
+
+# CHANGEMENT D’ENSEIGNANT → RECHARGEMENT DEPUIS GOOGLE SHEETS
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
+
+    # on recharge les créneaux déjà enregistrés
     st.session_state.ponctuels = []
-    st.session_state.semaines_sel = []
-    st.session_state.jours_sel = []
-    st.session_state.creneaux_sel = []
-    st.session_state.raison_sel = ""
-    st.session_state.commentaire = ""
-    st.session_state.email_utilisateur = ""
+
+    rows = codes_sheet.get_all_records()
+    for r in rows:
+        if r["user_code"] == user_code:
+            st.session_state.ponctuels.append({
+                "semaine": r["semaine"],
+                "jour": r["jour"],
+                "creneau": r["creneau"],
+                "raison": r.get("raison", "")
+            })
+
 
 # ======================
 # Champ email pour récap
@@ -303,14 +327,18 @@ else:
 # Commentaire global
 # ======================
 st.text_area("💬 Commentaire global", value=st.session_state.commentaire, key="commentaire")
+
 # ======================
 # Enregistrement final + envoi email
 # ======================
 if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- Suppression anciennes lignes utilisateur ---
-    rows_to_delete = [i for i,r in enumerate(st.session_state.all_data[1:], start=2) if r[0]==user_code]
+    # --- Suppression anciennes lignes de l'utilisateur ---
+    rows_to_delete = [
+        i for i, r in enumerate(st.session_state.all_data[1:], start=2)
+        if r[0] == user_code
+    ]
     for i in sorted(rows_to_delete, reverse=True):
         st.session_state.sheet.delete_rows(i)
 
@@ -318,28 +346,27 @@ if st.button("💾 Enregistrer"):
     rows_to_append = []
     for p in st.session_state.ponctuels:
         rows_to_append.append([
-            user_code,
-            p.get("semaine",""),
-            CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau","")),
-            CODE_TO_JOUR.get(p.get("jour",""), p.get("jour","")),
-            f"{p.get('jour','')}_{p.get('creneau','')}",
-            f"{user_code}_{p.get('jour','')}_{p.get('creneau','')}_P",
-            p.get("raison",""),
-            st.session_state.commentaire,
-            now
-        ])
-    if not rows_to_append:
-        rows_to_append.append([
-            user_code,"","","","","Aucune indisponibilité enregistrée.","",
-            st.session_state.commentaire, now
+            user_code,                    # user_code
+            p.get("semaine", ""),          # semaine
+            p.get("jour", ""),             # code jour (LUN, MAR…)
+            p.get("creneau", ""),          # code créneau (M1, M2…)
+            p.get("raison", ""),           # raison
+            st.session_state.commentaire,  # commentaire global
+            now                            # timestamp
         ])
 
-    st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
-    st.success("✅ Indisponibilités enregistrées dans Google Sheets")
+    if rows_to_append:
+        st.session_state.sheet.append_rows(
+            rows_to_append,
+            value_input_option="USER_ENTERED"
+        )
+        st.success("✅ Indisponibilités enregistrées dans Google Sheets")
+    else:
+        st.info("ℹ️ Aucun créneau à enregistrer")
 
     # --- Envoi email Brevo ---
     destinataire = st.session_state.email_utilisateur
-    if destinataire:  # Vérifie qu'un mail a été saisi
+    if destinataire:
         sujet = f"Récapitulatif des indisponibilités - {now}"
         contenu_html = generer_contenu_email_html(
             user_code,
@@ -354,5 +381,6 @@ if st.button("💾 Enregistrer"):
         else:
             st.error(f"❌ Erreur envoi mail : {msg}")
     else:
-        st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail pour recevoir le récapitulatif.")
+        st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail.")
+
 
