@@ -193,29 +193,26 @@ if st.session_state.selected_user != user_code:
 # ======================
 # Détection données existantes
 # ======================
-user_rows = [
-    r for r in st.session_state.sheet.get_all_values()[1:]
-    if r[0] == user_code
-]
+    user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
+    codes_sheet = set()
+    commentaire_existant = ""
+    dernier_timestamp = None
+    for r in user_rows:
+        if len(r) > 5 and r[5].endswith("_P"):
+            codes_sheet.add(r[5])
+            commentaire_existant = r[6] if len(r) > 6 else ""
+        if len(r) > 8 and r[8]:
+            if dernier_timestamp is None or r[8] > dernier_timestamp:
+                dernier_timestamp = r[8]
 
-codes_existants = ""
-dernier_timestamp = None
-
-for r in user_rows:
-    if len(r) > 3:
-        codes_existants.append(r)
-    if len(r) > 6 and r[6]:
-        if dernier_timestamp is None or r[6] > dernier_timestamp:
-            dernier_timestamp = r[6]
-
-if codes_existants:
-    msg = (
-        "⚠️ Des indisponibilités sont déjà enregistrées pour vous.\n"
-        "Toute modification effacera les anciennes données lors de l'enregistrement.\n"
-    )
-    if dernier_timestamp:
-        msg += f"Dernière modification effectuée le : {dernier_timestamp}"
-    st.warning(msg)
+    if codes_sheet:
+        msg = (
+            "⚠️ Des indisponibilités sont déjà enregistrées pour vous.<br>"
+            "Toute modification effacera les anciennes données lors de l'enregistrement.<br>"
+        )
+        if dernier_timestamp:
+            msg += f"Dernière modification effectuée le : {dernier_timestamp}"
+        st.markdown(msg, unsafe_allow_html=True)
 
 
 # ======================
