@@ -143,57 +143,6 @@ def get_semaines_nums(selection):
             result.append(code_num)
     return result
 
-def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
-    """
-    Génère un message professionnel récapitulatif des indisponibilités.
-    """
-    lines = [
-        f"Bonjour {user_code},\n",
-        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :\n",
-        "Semaine | Jour | Créneau | Commentaire",
-        "----------------------------------------"
-    ]
-    for p in ponc:
-        semaine = p.get("semaine", "")
-        jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
-        creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
-        raison = p.get("raison","")
-        lines.append(f"{semaine} | {jour} | {creneau} | {raison}")
-    lines.append(f"\nCommentaire global : {commentaire_global}\n")
-    lines.append("Cordialement,\nService Planning GEII")
-    return "\n".join(lines)
-
-def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
-    """
-    Génère un email professionnel avec un récapitulatif sous forme de liste,
-    similaire à la vue Streamlit "Créneaux ajoutés/enregistrés".
-    """
-    lines = [
-        f"Bonjour {user_code},",
-        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :",
-        "",
-    ]
-
-    if ponc:
-        for p in ponc:
-            semaine = p.get("semaine","")
-            jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
-            creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
-            raison = p.get("raison","-")
-            lines.append(f"- Semaine {semaine} | Jour {jour} | Créneau {creneau} | Commentaire : {raison}")
-    else:
-        lines.append("Aucune indisponibilité enregistrée.")
-
-    lines.append("")
-    lines.append(f"Commentaire global : {commentaire_global or '-'}")
-    lines.append("")
-    lines.append("Cordialement,")
-    lines.append("Service Planning GEII")
-
-    return "\n".join(lines)
-
-
-
 # ======================
 # SESSION STATE INIT
 # ======================
@@ -212,40 +161,34 @@ options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users
 label = st.selectbox("Choisissez votre nom", options.keys())
 user_code = options[label]
 
-# Reset si utilisateur change
-#if st.session_state.selected_user != user_code:
-#    st.session_state.selected_user = user_code
-#    st.session_state.ponctuels = []
- #   st.session_state.semaines_sel = []
-  #  st.session_state.jours_sel = []
-#    st.session_state.creneaux_sel = []
-#    st.session_state.raison_sel = ""
-#    st.session_state.commentaire = ""
-#    st.session_state.email_utilisateur = ""
-
-if "selected_user" not in st.session_state:
-    st.session_state.selected_user = None
-
-if "ponctuels" not in st.session_state:
-    st.session_state.ponctuels = []
-
-# CHANGEMENT D’ENSEIGNANT → RECHARGEMENT DEPUIS GOOGLE SHEETS
+# ==========================================================
+# 🔥 RECHARGEMENT DEPUIS GOOGLE SHEETS (COMME SCRIPT 1)
+# ==========================================================
 if st.session_state.selected_user != user_code:
     st.session_state.selected_user = user_code
 
-    # on recharge les créneaux déjà enregistrés
+    user_rows = [
+        r for r in st.session_state.sheet.get_all_values()[1:]
+        if r[0] == user_code
+    ]
+
     st.session_state.ponctuels = []
+    deja_vus = set()
 
-    rows = codes_sheet.get_all_records()
-    for r in rows:
-        if r["user_code"] == user_code:
-            st.session_state.ponctuels.append({
-                "semaine": r["semaine"],
-                "jour": r["jour"],
-                "creneau": r["creneau"],
-                "raison": r.get("raison", "")
-            })
+    for r in user_rows:
+        if len(r) > 3:
+            key = (r[1], r[2], r[3])
+            if key not in deja_vus:
+                deja_vus.add(key)
+                st.session_state.ponctuels.append({
+                    "id": str(uuid.uuid4()),
+                    "semaine": r[1],
+                    "jour": r[2],
+                    "creneau": r[3],
+                    "raison": r[4] if len(r) > 4 else ""
+                })
 
+    st.rerun()
 
 # ======================
 # Champ email pour récap
@@ -265,7 +208,6 @@ def ajouter_creneaux():
     for s in semaines_sel:
         for j in jours_codes:
             for num in creneaux_nums:
-                code = f"{user_code}_{j}_{num}_P"
                 existe_streamlit = any(
                     p["semaine"] == s and p["jour"] == j and p["creneau"] == num
                     for p in st.session_state.ponctuels
@@ -334,7 +276,6 @@ st.text_area("💬 Commentaire global", value=st.session_state.commentaire, key=
 if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- Suppression anciennes lignes de l'utilisateur ---
     rows_to_delete = [
         i for i, r in enumerate(st.session_state.all_data[1:], start=2)
         if r[0] == user_code
@@ -342,17 +283,16 @@ if st.button("💾 Enregistrer"):
     for i in sorted(rows_to_delete, reverse=True):
         st.session_state.sheet.delete_rows(i)
 
-    # --- Ajout des nouveaux créneaux ---
     rows_to_append = []
     for p in st.session_state.ponctuels:
         rows_to_append.append([
-            user_code,                    # user_code
-            p.get("semaine", ""),          # semaine
-            p.get("jour", ""),             # code jour (LUN, MAR…)
-            p.get("creneau", ""),          # code créneau (M1, M2…)
-            p.get("raison", ""),           # raison
-            st.session_state.commentaire,  # commentaire global
-            now                            # timestamp
+            user_code,
+            p.get("semaine", ""),
+            p.get("jour", ""),
+            p.get("creneau", ""),
+            p.get("raison", ""),
+            st.session_state.commentaire,
+            now
         ])
 
     if rows_to_append:
@@ -364,7 +304,6 @@ if st.button("💾 Enregistrer"):
     else:
         st.info("ℹ️ Aucun créneau à enregistrer")
 
-    # --- Envoi email Brevo ---
     destinataire = st.session_state.email_utilisateur
     if destinataire:
         sujet = f"Récapitulatif des indisponibilités - {now}"
@@ -382,5 +321,3 @@ if st.button("💾 Enregistrer"):
             st.error(f"❌ Erreur envoi mail : {msg}")
     else:
         st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail.")
-
-
