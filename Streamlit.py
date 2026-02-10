@@ -162,6 +162,59 @@ def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
     lines.append(f"\nCommentaire global : {commentaire_global}\n")
     lines.append("Cordialement,\nService Planning GEII")
     return "\n".join(lines)
+def generer_contenu_email_html(user_code, ponc, commentaire_global, timestamp):
+    """
+    Génère un email professionnel avec un tableau HTML récapitulatif des indisponibilités.
+    """
+    # Début HTML
+    html = f"""
+    <html>
+    <body>
+    <p>Bonjour {user_code},</p>
+    <p>Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :</p>
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
+        <thead style="background-color:#f2f2f2;">
+            <tr>
+                <th>Semaine</th>
+                <th>Jour</th>
+                <th>Créneau</th>
+                <th>Commentaire</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+
+    if ponc:
+        for p in ponc:
+            semaine = p.get("semaine","")
+            jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
+            creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
+            raison = p.get("raison","")
+            html += f"""
+            <tr>
+                <td>{semaine}</td>
+                <td>{jour}</td>
+                <td>{creneau}</td>
+                <td>{raison}</td>
+            </tr>
+            """
+    else:
+        html += """
+        <tr>
+            <td colspan="4" style="text-align:center;">Aucune indisponibilité enregistrée</td>
+        </tr>
+        """
+
+    html += f"""
+        </tbody>
+    </table>
+    <p><strong>Commentaire global :</strong> {commentaire_global}</p>
+    <p>Cordialement,<br/>Service Planning GEII</p>
+    </body>
+    </html>
+    """
+
+    return html
 
 # ======================
 # SESSION STATE INIT
@@ -272,18 +325,17 @@ else:
 # Commentaire global
 # ======================
 st.text_area("💬 Commentaire global", value=st.session_state.commentaire, key="commentaire")
-
 # ======================
 # Enregistrement final + envoi email
 # ======================
 if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # --- Suppression anciennes lignes utilisateur ---
     rows_to_delete = [i for i,r in enumerate(st.session_state.all_data[1:], start=2) if r[0]==user_code]
     for i in sorted(rows_to_delete, reverse=True):
         st.session_state.sheet.delete_rows(i)
-    
+
     # --- Ajout des nouveaux créneaux ---
     rows_to_append = []
     for p in st.session_state.ponctuels:
@@ -303,23 +355,26 @@ if st.button("💾 Enregistrer"):
             user_code,"","","","","Aucune indisponibilité enregistrée.","",
             st.session_state.commentaire, now
         ])
+
     st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
     st.success("✅ Indisponibilités enregistrées dans Google Sheets")
 
-    # --- Envoi Brevo ---
+    # --- Envoi email Brevo ---
     destinataire = st.session_state.email_utilisateur
-    if destinataire:
+    if destinataire:  # Vérifie qu'un mail a été saisi
         sujet = f"Récapitulatif des indisponibilités - {now}"
-        contenu = generer_contenu_email(
+        contenu_html = generer_contenu_email_html(
             user_code,
             st.session_state.ponctuels,
             st.session_state.commentaire,
             now
         )
-        success, msg = envoyer_email(destinataire, sujet, contenu)
+
+        success, msg = envoyer_email(destinataire, sujet, contenu_html)
         if success:
             st.success(f"✅ Email envoyé à {destinataire}")
         else:
             st.error(f"❌ Erreur envoi mail : {msg}")
     else:
         st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail pour recevoir le récapitulatif.")
+
