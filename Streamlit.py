@@ -3,16 +3,36 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import uuid
-
-# === AJOUT MAIL ===
-import smtplib
-from email.message import EmailMessage
-# ===================
-
-
+import os
 
 # ======================
-# CONFIG
+# BREVO SDK
+# ======================
+from sib_api_v3_sdk import Configuration, ApiClient
+from sib_api_v3_sdk.api.transactional_emails_api import TransactionalEmailsApi
+from sib_api_v3_sdk.models import SendSmtpEmail
+
+# ======================
+# CONFIGURATION BREVO
+# ======================
+configuration = Configuration()
+configuration.api_key['api-key'] = st.secrets["BREVO_API_KEY"]  # clé stockée dans st.secrets
+def envoyer_email(destinataire, sujet, contenu):
+    try:
+        api_instance = TransactionalEmailsApi(ApiClient(configuration))
+        send_smtp_email = SendSmtpEmail(
+            to=[{"email": destinataire}],
+            sender={"email": st.secrets["EMAIL_FROM"], "name": "Planning GEII"},
+            subject=sujet,
+            text_content=contenu
+        )
+        api_instance.send_transac_email(send_smtp_email)
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+# ======================
+# CONFIG GOOGLE SHEETS
 # ======================
 NOM_SHEET = "Indisponibilites-enseignants"
 ONGLET_DONNEES = "Feuille 1"
@@ -39,158 +59,71 @@ try:
         st.session_state.sheet = client.open(NOM_SHEET).worksheet(ONGLET_DONNEES)
     if "users_sheet" not in st.session_state:
         st.session_state.users_sheet = client.open(NOM_SHEET).worksheet(ONGLET_USERS)
-    if "creneaux_sheet" not in st.session_state:
-        st.session_state.creneaux_sheet = client.open(NOM_SHEET).worksheet("Creneaux")
-    if "jours_sheet" not in st.session_state:
-        st.session_state.jours_sheet = client.open(NOM_SHEET).worksheet("Jours")
-    if "semaines_sheet" not in st.session_state:
-        st.session_state.semaines_sheet = client.open(NOM_SHEET).worksheet("Semaines")
-    if "config_sheet" not in st.session_state:
-        st.session_state.config_sheet = client.open(NOM_SHEET).worksheet("Config")
 except Exception as e:
     st.error(f"Impossible d'accéder à une des feuilles Google Sheet.\n{e}")
     st.stop()
 
 # ======================
-# === AJOUT MAIL ===
-# Fonction envoi
+# CHARGEMENT DES DONNÉES
 # ======================
-def envoyer_mail(destinataire, sujet, contenu):
-    msg = EmailMessage()
-    msg["Subject"] = sujet
-    msg["From"] = st.secrets["EMAIL_FROM"]
-    msg["To"] = destinataire
-    msg.set_content(contenu)
-
-    with smtplib.SMTP("smtp.office365.com", 587) as server:
-        server.starttls()
-        server.login(st.secrets["EMAIL_FROM"], st.secrets["EMAIL_PASSWORD"])
-        server.send_message(msg)
-# ======================
-
-# ======================
-# LECTURE CONFIG AU DEMARRAGE
-# ======================
-if "semestre_filter" not in st.session_state:
-    try:
-        config_rows = st.session_state.config_sheet.get_all_values()
-        if len(config_rows) > 1 and config_rows[1]:
-            st.session_state.semestre_filter = config_rows[1][0]
-        else:
-            st.session_state.semestre_filter = "Toutes"
-    except:
-        st.session_state.semestre_filter = "Toutes"
-
-# ======================
-# CHARGEMENT DES DONNÉES EN SESSION
-# ======================
-if "creneaux_data" not in st.session_state:
-    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:]
-if "jours_data" not in st.session_state:
-    st.session_state.jours_data = st.session_state.jours_sheet.get_all_values()[1:]
-if "semaines_data" not in st.session_state:
-    st.session_state.semaines_data = st.session_state.semaines_sheet.get_all_values()[1:]
-if "users_data" not in st.session_state:
-    st.session_state.users_data = st.session_state.users_sheet.get_all_values()[1:]
 if "all_data" not in st.session_state:
     st.session_state.all_data = st.session_state.sheet.get_all_values()
+if "users_data" not in st.session_state:
+    st.session_state.users_data = st.session_state.users_sheet.get_all_values()[1:]
 
 # ======================
-# DICTIONNAIRES
+# SESSION STATE
 # ======================
-CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
-CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
-
-JOURS_LABELS = {r[0]: r[1] for r in st.session_state.jours_data if len(r) >= 2}
-JOURS_GROUPES = {r[0]: r[2] for r in st.session_state.jours_data if len(r) >= 3}
-
-SEMAINES_LABELS = {r[0]: r[1] for r in st.session_state.semaines_data if len(r) >= 2}
-SEMAINES_GROUPES = {r[0]: r[2] for r in st.session_state.semaines_data if len(r) >= 3}
-
-CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
-CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
-
-# ======================
-# SESSION STATE INIT
-# ======================
-if "ponctuels" not in st.session_state:
-    st.session_state.ponctuels = []
 if "selected_user" not in st.session_state:
     st.session_state.selected_user = ""
-if "commentaire" not in st.session_state:
-    st.session_state.commentaire = ""
+if "email_utilisateur" not in st.session_state:
+    st.session_state.email_utilisateur = ""
 
 # ======================
-# MODE
+# UI
 # ======================
-mode = st.radio("Mode", ["Utilisateur", "Administrateur"])
+st.title("📅 Indisponibilités enseignants")
 
 # ======================
-# MODE UTILISATEUR
+# UTILISATEUR
 # ======================
-if mode == "Utilisateur":
-    st.title("📅 Indisponibilités enseignants")
+users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
+options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
+label = st.selectbox("Choisissez votre nom", options.keys())
+user_code = options[label]
 
-    users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
-    options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
-    label = st.selectbox("Choisissez votre nom", options.keys())
-    user_code = options[label]
+# 🔄 Reset si utilisateur change
+if st.session_state.selected_user != user_code:
+    st.session_state.selected_user = user_code
 
-    # === AJOUT MAIL ===
-    user_email = st.text_input("📧 Votre adresse email pour recevoir le récapitulatif")
-    # ===================
+# ======================
+# EMAIL UTILISATEUR
+# ======================
+st.text_input("Votre adresse email pour recevoir le récapitulatif :", key="email_utilisateur")
+
+# ======================
+# BOUTON ENREGISTRER
+# ======================
+if st.button("💾 Enregistrer"):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Enregistrement minimal dans Google Sheets
+    st.session_state.sheet.append_row([
+        user_code, now, "Test d'enregistrement"
+    ], value_input_option="USER_ENTERED")
+
+    st.success("✅ Indisponibilités enregistrées dans Google Sheets")
 
     # ======================
-    # Enregistrement
+    # ENVOI EMAIL
     # ======================
-    if st.button("💾 Enregistrer"):
-        rows_to_delete = [i for i, r in enumerate(st.session_state.all_data[1:], start=2) if r[0] == user_code]
-        for i in sorted(rows_to_delete, reverse=True):
-            st.session_state.sheet.delete_rows(i)
+    destinataire = st.session_state.email_utilisateur
+    sujet = f"Récapitulatif des indisponibilités - {now}"
+    contenu = "test"
 
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    success, msg = envoyer_email(destinataire, sujet, contenu)
 
-        if st.session_state.ponctuels:
-            rows_to_append = []
-            for p in st.session_state.ponctuels:
-                if p["jour"] and p["creneau"]:
-                    code_cr = f"{p['jour']}_{p['creneau']}"
-                    code_streamlit = f"{user_code}_{code_cr}_P"
-                    raison = p.get("raison", "")
-                else:
-                    code_cr = ""
-                    code_streamlit = f"{user_code}_AAA_0_P"
-                    raison = "Aucune indisponibilité enregistrée."
-                rows_to_append.append([
-                    user_code,
-                    p.get("semaine", ""),
-                    CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
-                    CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
-                    code_cr,
-                    code_streamlit,
-                    raison,
-                    st.session_state.commentaire,
-                    now
-                ])
-            st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
-        else:
-            st.session_state.sheet.append_row([
-                user_code, "", "", "", "", f"{user_code}_AAA_0_P",
-                "Aucune indisponibilité enregistrée.",
-                st.session_state.commentaire,
-                now
-            ], value_input_option="USER_ENTERED")
-
-        st.success("✅ Indisponibilités enregistrées")
-
-        # ======================
-        # === AJOUT MAIL ===
-        # ======================
-        if user_email:
-            sujet_mail = f"Récapitulatif des indisponibilités {now}"
-            contenu_mail = "test"
-            try:
-                envoyer_mail(user_email, sujet_mail, contenu_mail)
-                st.success(f"✅ Email envoyé à {user_email}")
-            except Exception as e:
-                st.error(f"❌ Erreur envoi mail : {e}")
+    if success:
+        st.success(f"✅ Email envoyé à {destinataire}")
+    else:
+        st.error(f"❌ Erreur envoi mail : {msg}")
