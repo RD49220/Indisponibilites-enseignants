@@ -465,8 +465,9 @@ else:
                 rows_to_append.append([
                     user_code,
                     p.get("semaine", ""),
-                    CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
                     CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
+                    CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
+
                     code_cr,
                     code_streamlit,
                     raison,
