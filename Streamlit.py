@@ -444,14 +444,19 @@ if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # --- Suppression des anciennes lignes pour cet utilisateur ---
-    rows_to_delete = [
-        i for i, r in enumerate(st.session_state.all_data[1:], start=2)
-        if r[0] == user_code
-    ]
-    for i in sorted(rows_to_delete, reverse=True):
-        st.session_state.sheet.delete_rows(i)
+    try:
+        all_rows = st.session_state.sheet.get_all_values()
+        rows_to_delete = [
+            i for i, r in enumerate(all_rows[1:], start=2)  # on commence à 2 pour ignorer l'en-tête
+            if r[0] == user_code
+        ]
+        for i in sorted(rows_to_delete, reverse=True):
+            st.session_state.sheet.delete_rows(i)
+    except Exception as e:
+        st.error(f"⚠️ Impossible de supprimer les anciennes lignes : {e}")
+        st.stop()
 
-    # --- Préparation des nouvelles lignes à ajouter ---
+    # --- Préparation des nouvelles lignes à ajouter depuis st.session_state.ponctuels ---
     rows_to_append = []
     for p in st.session_state.ponctuels:
         semaine = p.get("semaine", "")
@@ -459,9 +464,8 @@ if st.button("💾 Enregistrer"):
         creneau = p.get("creneau", "")
         raison = p.get("raison", "")
 
-        # Chaque ligne correspond exactement à ce que l'on voit dans l'appli
         rows_to_append.append([
-            user_code,                    # Col A : user_code
+            user_code,                    # Col A : code utilisateur
             semaine,                      # Col B : semaine
             jour,                         # Col C : jour
             creneau,                      # Col D : créneau
@@ -472,14 +476,16 @@ if st.button("💾 Enregistrer"):
             now                           # Col I : timestamp
         ])
 
-    # --- Ajout dans Google Sheets ---
+    # --- Écriture dans Google Sheets ---
     if rows_to_append:
-        # On n'ajoute que ce qui est visible dans l'appli, doublons déjà filtrés
-        st.session_state.sheet.append_rows(
-            rows_to_append,
-            value_input_option="USER_ENTERED"
-        )
-        st.success("✅ Indisponibilités enregistrées dans Google Sheets")
+        try:
+            st.session_state.sheet.append_rows(
+                rows_to_append,
+                value_input_option="USER_ENTERED"
+            )
+            st.success("✅ Indisponibilités enregistrées dans Google Sheets")
+        except Exception as e:
+            st.error(f"❌ Erreur lors de l'écriture dans Google Sheets : {e}")
     else:
         st.info("ℹ️ Aucun créneau à enregistrer")
 
@@ -498,3 +504,5 @@ if st.button("💾 Enregistrer"):
         success, msg = envoyer_email(destinataire, sujet, contenu)
         if success:
             st.success(f"✅ Email envoyé à {destinataire}")
+        else:
+            st.error(f"❌ Erreur envoi mail : {msg}")
