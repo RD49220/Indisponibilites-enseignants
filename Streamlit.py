@@ -236,7 +236,7 @@ if mode == "Administrateur":
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
-        index=["Toutes","Pairs","Impairs"].index(st.session_state.semestre_filter)
+        index=["Toutes", "Pairs", "Impairs"].index(st.session_state.semestre_filter)
     )
     st.session_state.semestre_filter = semestre_choice
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
@@ -250,9 +250,12 @@ if mode == "Administrateur":
     except Exception as e:
         st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
 
+    # ======================
+    # SUPPRESSION DES LIGNES
+    # ======================
     if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
-        # 🔴 on relit la feuille en direct pour avoir le vrai nombre de lignes
-         data = st.session_state.sheet.get_all_values()
+        # on relit la feuille en direct pour avoir le vrai nombre de lignes
+        data = st.session_state.sheet.get_all_values()
         n_rows = len(data)
 
         if n_rows > 1:
@@ -263,6 +266,7 @@ if mode == "Administrateur":
             st.session_state.all_data = st.session_state.sheet.get_all_values()
         else:
             st.info("La feuille est déjà vide après la ligne 1.")
+
 
 
 # ======================
