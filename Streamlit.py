@@ -250,19 +250,19 @@ if mode == "Administrateur":
     except Exception as e:
         st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
 
-if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
-    # 🔴 on relit la feuille en direct pour avoir le vrai nombre de lignes
-    data = st.session_state.sheet.get_all_values()
-    n_rows = len(data)
+    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
+        # 🔴 on relit la feuille en direct pour avoir le vrai nombre de lignes
+         data = st.session_state.sheet.get_all_values()
+        n_rows = len(data)
 
-    if n_rows > 1:
-        st.session_state.sheet.delete_rows(2, n_rows)
-        st.success("✅ Toutes les lignes à partir de la ligne 2 ont été supprimées !")
+        if n_rows > 1:
+            st.session_state.sheet.delete_rows(2, n_rows)
+            st.success("✅ Toutes les lignes à partir de la ligne 2 ont été supprimées !")
 
-        # rafraîchit les données en mémoire
-        st.session_state.all_data = st.session_state.sheet.get_all_values()
-    else:
-        st.info("La feuille est déjà vide après la ligne 1.")
+            # rafraîchit les données en mémoire
+            st.session_state.all_data = st.session_state.sheet.get_all_values()
+        else:
+            st.info("La feuille est déjà vide après la ligne 1.")
 
 
 # ======================
