@@ -459,20 +459,22 @@ if st.button("💾 Enregistrer"):
         creneau = p.get("creneau", "")
         raison = p.get("raison", "")
 
+        # Chaque ligne correspond exactement à ce que l'on voit dans l'appli
         rows_to_append.append([
-            user_code,        # Col A : user_code
-            semaine,          # Col B : semaine
-            jour,             # Col C : jour
-            creneau,          # Col D : créneau
-            f"{jour}_{creneau}",  # Col E : code interne (jour_creneau)
+            user_code,                    # Col A : user_code
+            semaine,                      # Col B : semaine
+            jour,                         # Col C : jour
+            creneau,                      # Col D : créneau
+            f"{jour}_{creneau}",          # Col E : code interne (jour_creneau)
             f"{user_code}_{jour}_{creneau}_P",  # Col F : code complet
-            raison,           # Col G : raison
-            st.session_state.commentaire,  # Col H : commentaire global
-            now               # Col I : timestamp
+            raison,                       # Col G : raison
+            st.session_state.commentaire, # Col H : commentaire global
+            now                           # Col I : timestamp
         ])
 
     # --- Ajout dans Google Sheets ---
     if rows_to_append:
+        # On n'ajoute que ce qui est visible dans l'appli, doublons déjà filtrés
         st.session_state.sheet.append_rows(
             rows_to_append,
             value_input_option="USER_ENTERED"
@@ -496,4 +498,3 @@ if st.button("💾 Enregistrer"):
         success, msg = envoyer_email(destinataire, sujet, contenu)
         if success:
             st.success(f"✅ Email envoyé à {destinataire}")
-
