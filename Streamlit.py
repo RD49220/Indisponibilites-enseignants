@@ -317,6 +317,8 @@ else:
         st.session_state.creneaux_sel = []
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
+        st.session_state.email_utilisateur = ""
+
 
         st.rerun()  # 🔹 Rerun pour afficher les derniers créneaux
 
