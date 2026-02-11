@@ -3,14 +3,26 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import uuid
-
 # ======================
-# AJOUT EMAIL (BREVO)
+# BREVO SDK
 # ======================
 from sib_api_v3_sdk import Configuration, ApiClient
 from sib_api_v3_sdk.api.transactional_emails_api import TransactionalEmailsApi
 from sib_api_v3_sdk.models import SendSmtpEmail
 
+
+
+# ======================
+# CONFIG
+# ======================
+NOM_SHEET = "Indisponibilites-enseignants"
+ONGLET_DONNEES = "Feuille 1"
+ONGLET_USERS = "Utilisateurs"
+ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
+
+# ======================
+# CONFIGURATION BREVO
+# ======================
 configuration = Configuration()
 configuration.api_key['api-key'] = st.secrets["BREVO_API_KEY"]
 
@@ -28,13 +40,14 @@ def envoyer_email(destinataire, sujet, contenu):
     except Exception as e:
         return False, str(e)
 
+
 # ======================
-# CONFIG
+# DEBUG SECRET
 # ======================
-NOM_SHEET = "Indisponibilites-enseignants"
-ONGLET_DONNEES = "Feuille 1"
-ONGLET_USERS = "Utilisateurs"
-ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
+#if "admin_password" in st.secrets:
+#    st.success("✅ Secret admin_password détecté")
+#else:
+#    st.error("❌ Secret admin_password INTROUVABLE")
 
 # ======================
 # AUTH GOOGLE
@@ -81,6 +94,8 @@ if "semestre_filter" not in st.session_state:
     except:
         st.session_state.semestre_filter = "Toutes"
 
+#st.write(f"Config chargée au démarrage : {st.session_state.semestre_filter}")
+
 # ======================
 # CHARGEMENT DES DONNÉES EN SESSION
 # ======================
@@ -96,7 +111,7 @@ if "all_data" not in st.session_state:
     st.session_state.all_data = st.session_state.sheet.get_all_values()
 
 # ======================
-# DICTIONNAIRES
+# DICTIONNAIRES CRÉNEAUX, JOURS, SEMAINES
 # ======================
 CRENEAUX_LABELS = {r[0]: r[1] for r in st.session_state.creneaux_data if len(r) >= 2}
 CRENEAUX_GROUPES = {r[0]: r[2] for r in st.session_state.creneaux_data if len(r) >= 3}
@@ -111,29 +126,71 @@ CODE_TO_JOUR = {v: k for k, v in JOURS_LABELS.items()}
 CODE_TO_CREN = {v: k for k, v in CRENEAUX_LABELS.items()}
 
 # ======================
-# FONCTION CONTENU EMAIL
+# FONCTIONS UTILITAIRES
 # ======================
-def generer_contenu_email(user_code, ponc, commentaire, timestamp):
-    lignes = [
-        f"Bonjour {user_code},",
-        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp}.",
-        ""
+def get_creneaux_nums(selection):
+    result = []
+    for c in selection:
+        if c not in CRENEAUX_LABELS:
+            continue
+        code_num = CRENEAUX_LABELS[c]
+        groupe = CRENEAUX_GROUPES[c]
+        if code_num.startswith("ALL_"):
+            nums_du_groupe = [r[1] for r in st.session_state.creneaux_data if r[2] == groupe and not r[1].startswith("ALL_")]
+            result.extend(nums_du_groupe)
+        else:
+            result.append(code_num)
+    return result
+
+def get_jours_codes(selection):
+    result = []
+    for label in selection:
+        if label not in JOURS_LABELS:
+            continue
+        code_num = JOURS_LABELS[label]
+        groupe = JOURS_GROUPES[label]
+        if code_num.startswith("ALL_"):
+            nums_du_groupe = [r[1] for r in st.session_state.jours_data if r[2] == groupe and not r[1].startswith("ALL_")]
+            result.extend(nums_du_groupe)
+        else:
+            result.append(code_num)
+    return result
+
+def get_semaines_nums(selection):
+    result = []
+    for label in selection:
+        if label not in SEMAINES_LABELS:
+            continue
+        code_num = SEMAINES_LABELS[label]
+        groupe = SEMAINES_GROUPES[label]
+        if code_num.startswith("ALL_"):
+            nums_du_groupe = [r[1] for r in st.session_state.semaines_data if r[2] == groupe and not r[1].startswith("ALL_")]
+            result.extend(nums_du_groupe)
+        else:
+            result.append(code_num)
+    return result
+def generer_contenu_email(user_code, ponc, commentaire_global, timestamp):
+    lines = [
+        f"Bonjour {user_code},\n",
+        f"Voici le récapitulatif de vos indisponibilités enregistré le {timestamp} :\n",
+        "Semaine | Jour | Créneau | Commentaire",
+        "----------------------------------------"
     ]
+
     if ponc:
         for p in ponc:
-            lignes.append(
-                f"- Semaine {p.get('semaine','')} | "
-                f"Jour {CODE_TO_JOUR.get(p.get('jour',''), p.get('jour',''))} | "
-                f"Créneau {CODE_TO_CREN.get(p.get('creneau',''), p.get('creneau',''))} | "
-                f"Raison : {p.get('raison','-')}"
-            )
+            semaine = p.get("semaine", "")
+            jour = CODE_TO_JOUR.get(p.get("jour",""), p.get("jour",""))
+            creneau = CODE_TO_CREN.get(p.get("creneau",""), p.get("creneau",""))
+            raison = p.get("raison","")
+            lines.append(f"{semaine} | {jour} | {creneau} | {raison}")
     else:
-        lignes.append("Aucune indisponibilité enregistrée.")
-    lignes.append("")
-    lignes.append(f"Commentaire global : {commentaire or '-'}")
-    lignes.append("")
-    lignes.append("Service Planning GEII")
-    return "\n".join(lignes)
+        lines.append("Aucune indisponibilité enregistrée.")
+
+    lines.append(f"\nCommentaire global : {commentaire_global or '-'}\n")
+    lines.append("Cordialement,\nService Planning GEII")
+
+    return "\n".join(lines)
 
 # ======================
 # SESSION STATE INIT
@@ -156,9 +213,9 @@ if "_warning_doublon" not in st.session_state:
     st.session_state._warning_doublon = False
 if "semestre_filter" not in st.session_state:
     st.session_state.semestre_filter = "Toutes"
-# AJOUT
 if "email_utilisateur" not in st.session_state:
     st.session_state.email_utilisateur = ""
+
 
 # ======================
 # MODE UTILISATEUR / ADMIN
@@ -166,7 +223,7 @@ if "email_utilisateur" not in st.session_state:
 mode = st.radio("Mode", ["Utilisateur", "Administrateur"])
 
 # ======================
-# MODE ADMIN (IDENTIQUE)
+# MODE ADMIN
 # ======================
 if mode == "Administrateur":
     pwd_input = st.text_input("Entrez le mot de passe administrateur :", type="password")
@@ -207,6 +264,7 @@ if mode == "Administrateur":
 else:
     st.title("📅 Indisponibilités enseignants")
 
+    # Message spécifique semestre
     if st.session_state.semestre_filter == "Impairs":
         st.info("Choix pour le semestre Impairs. (La période correspond au S1)")
     elif st.session_state.semestre_filter == "Pairs":
@@ -214,6 +272,7 @@ else:
     else:
         st.info("Choix pour tous les semestres.")
 
+    # Filtrage semaines
     all_semaines = st.session_state.semaines_data
     if st.session_state.semestre_filter == "Pairs":
         filtered_semaines = [s for s in all_semaines if s[2] == "SP"]
@@ -222,15 +281,16 @@ else:
     else:
         filtered_semaines = all_semaines
 
+    # Choix utilisateur
     users = [{"code": r[0], "nom": r[1], "prenom": r[2]} for r in st.session_state.users_data if len(r) >= 3]
     options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
+    
+    st.text_input("Votre adresse email pour recevoir le récapitulatif :", key="email_utilisateur")
 
-    # AJOUT EMAIL
-    st.text_input("📧 Adresse mail pour recevoir le récapitulatif", key="email_utilisateur")
-
-# 🔄 Reset et reload créneaux depuis Google Sheet si changement utilisateur
+        
+    # 🔄 Reset et reload créneaux depuis Google Sheet si changement utilisateur
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
 
@@ -372,68 +432,73 @@ else:
         commentaire_value = str(commentaire_value)
 
     st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
+
     # ======================
-# Enregistrement + envoi email
-# ======================
-if st.button("💾 Enregistrer"):
-    # --- suppression des anciennes lignes pour cet utilisateur ---
-    rows_to_delete = [i for i, r in enumerate(st.session_state.all_data[1:], start=2) if r[0] == user_code]
-    for i in sorted(rows_to_delete, reverse=True):
-        st.session_state.sheet.delete_rows(i)
+    # Enregistrement
+    # ======================
+       # ======================
+    # Enregistrement
+    # ======================
+    if st.button("💾 Enregistrer"):
+        rows_to_delete = [i for i, r in enumerate(st.session_state.all_data[1:], start=2) if r[0] == user_code]
+        for i in sorted(rows_to_delete, reverse=True):
+            st.session_state.sheet.delete_rows(i)
 
-    # --- date et heure du jour ---
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    if st.session_state.ponctuels:
-        rows_to_append = []
-        for p in st.session_state.ponctuels:
-            if p["jour"] and p["creneau"]:
-                code_cr = f"{p['jour']}_{p['creneau']}"
-                code_streamlit = f"{user_code}_{code_cr}_P"
-                raison = p.get("raison", "")
-            else:
-                code_cr = ""
-                code_streamlit = f"{user_code}_AAA_0_P"
-                raison = "Aucune indisponibilité enregistrée."
-            rows_to_append.append([
-                user_code,
-                p.get("semaine", ""),
-                CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
-                CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
-                code_cr,
-                code_streamlit,
-                raison,
+        if st.session_state.ponctuels:
+            rows_to_append = []
+            for p in st.session_state.ponctuels:
+                if p["jour"] and p["creneau"]:
+                    code_cr = f"{p['jour']}_{p['creneau']}"
+                    code_streamlit = f"{user_code}_{code_cr}_P"
+                    raison = p.get("raison", "")
+                else:
+                    code_cr = ""
+                    code_streamlit = f"{user_code}_AAA_0_P"
+                    raison = "Aucune indisponibilité enregistrée."
+
+                rows_to_append.append([
+                    user_code,
+                    p.get("semaine", ""),
+                    CODE_TO_CREN.get(p.get("creneau", ""), p.get("creneau", "")),
+                    CODE_TO_JOUR.get(p.get("jour", ""), p.get("jour", "")),
+                    code_cr,
+                    code_streamlit,
+                    raison,
+                    st.session_state.commentaire,
+                    now
+                ])
+
+            st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+        else:
+            st.session_state.sheet.append_row([
+                user_code, "", "", "", "", f"{user_code}_AAA_0_P",
+                "Aucune indisponibilité enregistrée.",
                 st.session_state.commentaire,
                 now
-            ])
-        st.session_state.sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
-    else:
-        st.session_state.sheet.append_row([
-            user_code, "", "", "", "", f"{user_code}_AAA_0_P",
-            "Aucune indisponibilité enregistrée.",
-            st.session_state.commentaire,
-            now
-        ], value_input_option="USER_ENTERED")
+            ], value_input_option="USER_ENTERED")
 
-    st.success("✅ Indisponibilités enregistrées")
+        st.success("✅ Indisponibilités enregistrées")
 
-    # ======================
-    # ENVOI EMAIL
-    # ======================
-    destinataire = st.session_state.email_utilisateur
-    if destinataire:
-        sujet = f"Récapitulatif des indisponibilités - {now}"
-        contenu = generer_contenu_email(
-            user_code,
-            st.session_state.ponctuels,
-            st.session_state.commentaire,
-            now
-        )
-        ok, err = envoyer_email(destinataire, sujet, contenu)
-        if ok:
-            st.success(f"✅ Email envoyé à {destinataire}")
+        # ======================
+        # ENVOI EMAIL
+        # ======================
+        destinataire = st.session_state.email_utilisateur
+
+        if destinataire:
+            sujet = f"Récapitulatif des indisponibilités - {now}"
+            contenu = generer_contenu_email(
+                user_code,
+                st.session_state.ponctuels,
+                st.session_state.commentaire,
+                now
+            )
+
+            success, msg = envoyer_email(destinataire, sujet, contenu)
+            if success:
+                st.success(f"✅ Email envoyé à {destinataire}")
+            else:
+                st.error(f"❌ Erreur envoi mail : {msg}")
         else:
-            st.error(f"❌ Erreur envoi mail : {err}")
-    else:
-        st.warning("⚠️ Adresse email non renseignée.")
-
+            st.warning("⚠️ Vous n'avez pas renseigné d'adresse mail.")
