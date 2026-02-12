@@ -531,7 +531,7 @@ if st.button("💾 Enregistrer"):
             jour,                                   # Col C : jour
             creneau,                                # Col D : créneau
             f"{jour}_{creneau}",                    # Col E : code interne (jour_creneau)
-            f"{user_code}_{semaine}_{jour}_{creneau}",  # Col F : code complet
+            f"{user_code}_{semaine}_{jour}_{creneau}_P",  # Col F : code streamlit complet garder _P a la fin pour la détéction 
             raison,                                 # Col G : raison
             st.session_state.commentaire,           # Col H : commentaire global
             now                                     # Col I : timestamp
