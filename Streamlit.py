@@ -293,6 +293,8 @@ else:
     else:
         st.caption("     *Voeux pour tous les semestres.*")
     st.divider()
+    st.subheader("👨‍🏫 Informations Enseignant")
+
     
     # Filtrage semaines
     all_semaines = st.session_state.semaines_data
