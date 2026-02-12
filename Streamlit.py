@@ -287,11 +287,11 @@ else:
 
     # Message spécifique semestre
     if st.session_state.semestre_filter == "Impairs":
-        st.info("Choix pour le semestre Impairs. (La période correspond au S1)")
+        st.caption("*Choix pour le semestre Impairs. (La période correspond au S1)*")
     elif st.session_state.semestre_filter == "Pairs":
-        st.info("Choix pour le semestre Pair. (La période correspond au S6)")
+        st.caption("*Choix pour le semestre Pair. (La période correspond au S6)*")
     else:
-        st.info("Choix pour tous les semestres.")
+        st.caption("*Choix pour tous les semestres.*")
 
     # Filtrage semaines
     all_semaines = st.session_state.semaines_data
