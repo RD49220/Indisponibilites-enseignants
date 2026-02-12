@@ -226,6 +226,7 @@ mode = st.radio("Mode", ["Utilisateur", "Administrateur"])
 # MODE ADMIN
 # ======================
 if mode == "Administrateur":
+    # 🔑 Vérification mot de passe
     pwd_input = st.text_input("Entrez le mot de passe administrateur :", type="password")
     if pwd_input != ADMIN_PASSWORD:
         st.error("❌ Mot de passe incorrect. Accès refusé.")
@@ -233,6 +234,7 @@ if mode == "Administrateur":
 
     st.success("✅ Mode Administrateur activé.")
 
+    # --- Choix du filtre semestre ---
     semestre_choice = st.selectbox(
         "Afficher les semaines :",
         ["Toutes", "Pairs", "Impairs"],
@@ -241,6 +243,7 @@ if mode == "Administrateur":
     st.session_state.semestre_filter = semestre_choice
     st.write(f"Semestres configurés : {st.session_state.semestre_filter}")
 
+    # --- Sauvegarde du filtre dans la feuille Config ---
     try:
         rows = st.session_state.config_sheet.get_all_values()
         if len(rows) < 2:
@@ -249,6 +252,31 @@ if mode == "Administrateur":
             st.session_state.config_sheet.update("A2", [[st.session_state.semestre_filter]])
     except Exception as e:
         st.warning(f"⚠️ Impossible de sauvegarder le filtre dans Config.\n{e}")
+
+    # ======================
+    # SUPPRESSION DES LIGNES DE LA FEUILLE 1
+    # ======================
+    st.subheader("⚠️ Supprimer toutes les indisponibilités")
+    st.write("Cette action supprimera toutes les lignes de la Feuille 1 à partir de la ligne 2, mais conservera l'en-tête.")
+
+    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
+        try:
+            # Récupération de l'en-tête (1ère ligne)
+            header = st.session_state.sheet.get_all_values()[0:1]
+
+            # Vider entièrement la feuille
+            st.session_state.sheet.clear()
+
+            # Réécrire uniquement l'en-tête
+            if header:
+                st.session_state.sheet.append_rows(header, value_input_option="USER_ENTERED")
+
+            # Rafraîchir les données en mémoire
+            st.session_state.all_data = st.session_state.sheet.get_all_values()
+
+            st.success("✅ Toutes les lignes ont été supprimées, l'en-tête est conservé !")
+        except Exception as e:
+            st.error(f"⚠️ Impossible de supprimer les lignes : {e}")
 
     # ======================
     # SUPPRESSION DES LIGNES
@@ -396,7 +424,7 @@ else:
     # ======================
     # UI ajout
     # ======================
-    st.subheader("➕ Créneaux ponctuels")
+    st.subheader("🖊️ Saisir vos créneaux")
     st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
@@ -411,11 +439,20 @@ else:
     st.divider()
 
     # ======================
-    # Tableau + suppression individuelle
+    # Tableau + suppression individuelle avec scroll
     # ======================
-    st.subheader("📝 Créneaux ajoutés/enregistrés")
+    st.subheader("🗓️ Créneaux ajoutés/enregistrés")
+
     if st.session_state.ponctuels:
-        delete_id = None
+        delete_id = None  # nécessaire pour la suppression
+
+        # Container scrollable
+        st.markdown(
+            '<div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px;">',
+            unsafe_allow_html=True
+        )
+
+        # En-tête du tableau
         h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 1, 1])
         h1.markdown("**Semaine**")
         h2.markdown("**Jour**")
@@ -423,6 +460,7 @@ else:
         h4.markdown("**Raisons/Commentaires**")
         h5.markdown("**🗑️**")
 
+        # Lignes du tableau
         for r in st.session_state.ponctuels:
             c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
             c1.write(r["semaine"] or "-")
@@ -431,13 +469,23 @@ else:
             c4.write(r.get("raison", "") or "-")
             if c5.button("🗑️", key=f"del_{r['id']}"):
                 delete_id = r["id"]
+  
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Supprimer le créneau sélectionné
         if delete_id:
-            st.session_state.ponctuels = [r for r in st.session_state.ponctuels if r["id"] != delete_id]
+            st.session_state.ponctuels = [
+                r for r in st.session_state.ponctuels if r["id"] != delete_id
+            ]
             st.rerun()
+
     else:
         st.write("Aucune indisponibilité enregistrée.")
 
     st.divider()
+
+
+
 
     # ======================
     # Commentaire global
@@ -481,7 +529,7 @@ if st.button("💾 Enregistrer"):
             jour,                         # Col C : jour
             creneau,                      # Col D : créneau
             f"{jour}_{creneau}",          # Col E : code interne (jour_creneau)
-            f"{user_code}_{jour}_{creneau}_P",  # Col F : code complet
+            f"{user_code}_{semaine}_{jour}_{creneau}",  # Col F : code complet
             raison,                       # Col G : raison
             st.session_state.commentaire, # Col H : commentaire global
             now                           # Col I : timestamp
@@ -494,9 +542,9 @@ if st.button("💾 Enregistrer"):
                 rows_to_append,
                 value_input_option="USER_ENTERED"
             )
-            st.success("✅ Indisponibilités enregistrées dans Google Sheets")
+            st.success("✅ Indisponibilités enregistrées")
         except Exception as e:
-            st.error(f"❌ Erreur lors de l'écriture dans Google Sheets : {e}")
+            st.error(f"❌ Erreur lors de l'écriture : {e}")
     else:
         st.info("ℹ️ Aucun créneau à enregistrer")
 
