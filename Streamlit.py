@@ -441,36 +441,33 @@ else:
     # ======================
     # Tableau + suppression individuelle avec scroll
     # ======================
+    # ======================
+    # Tableau + suppression individuelle avec expander
+    # ======================
     st.subheader("🗓️ Créneaux ajoutés/enregistrés")
 
     if st.session_state.ponctuels:
         delete_id = None  # nécessaire pour la suppression
 
-        # Container scrollable
-        st.markdown(
-            '<div style="max-height:400px; overflow-y:auto; border:1px solid #ddd; padding:5px;">',
-            unsafe_allow_html=True
-        )
+        # Expander pour limiter la longueur du bloc
+        with st.expander("Voir les créneaux ajoutés/enregistrés", expanded=True):
+            # En-tête du tableau
+            h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 1, 1])
+            h1.markdown("**Semaine**")
+            h2.markdown("**Jour**")
+            h3.markdown("**Créneau**")
+            h4.markdown("**Raisons/Commentaires**")
+            h5.markdown("**🗑️**")
 
-        # En-tête du tableau
-        h1, h2, h3, h4, h5 = st.columns([1, 1, 1, 1, 1])
-        h1.markdown("**Semaine**")
-        h2.markdown("**Jour**")
-        h3.markdown("**Créneau**")
-        h4.markdown("**Raisons/Commentaires**")
-        h5.markdown("**🗑️**")
-
-        # Lignes du tableau
-        for r in st.session_state.ponctuels:
-            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
-            c1.write(r["semaine"] or "-")
-            c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")
-            c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]) or "-")
-            c4.write(r.get("raison", "") or "-")
-            if c5.button("🗑️", key=f"del_{r['id']}"):
-                delete_id = r["id"]
-  
-        st.markdown('</div>', unsafe_allow_html=True)
+            # Lignes du tableau
+            for r in st.session_state.ponctuels:
+                c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1])
+                c1.write(r["semaine"] or "-")
+                c2.write(CODE_TO_JOUR.get(r["jour"], r["jour"]) or "-")
+                c3.write(CODE_TO_CREN.get(r["creneau"], r["creneau"]) or "-")
+                c4.write(r.get("raison", "") or "-")
+                if c5.button("🗑️", key=f"del_{r['id']}"):
+                    delete_id = r["id"]
 
         # Supprimer le créneau sélectionné
         if delete_id:
@@ -483,8 +480,7 @@ else:
         st.write("Aucune indisponibilité enregistrée.")
 
     st.divider()
-
-
+    
 
 
     # ======================
