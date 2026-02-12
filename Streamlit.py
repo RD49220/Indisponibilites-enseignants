@@ -438,16 +438,21 @@ else:
 
     st.divider()
 
-    # ======================
-    # Tableau + suppression individuelle avec scroll
-    # ======================
+
     # ======================
     # Tableau + suppression individuelle avec expander
     # ======================
     st.subheader("🗓️ Créneaux ajoutés/enregistrés")
-
     if st.session_state.ponctuels:
         delete_id = None  # nécessaire pour la suppression
+
+        # Bouton "Supprimer tout"
+        if st.button("❌ Supprimer tous les créneaux"):
+            st.session_state.ponctuels = []
+            st.success("✅ Tous les créneaux ont été supprimés !")
+            st.rerun()  # re-render immédiatement
+        if st.session_state.ponctuels:
+            delete_id = None  # nécessaire pour la suppression
 
         # Expander pour limiter la longueur du bloc
         with st.expander("Voir les créneaux ajoutés/enregistrés", expanded=True):
