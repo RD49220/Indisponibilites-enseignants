@@ -15,7 +15,7 @@ from sib_api_v3_sdk.models import SendSmtpEmail
 # ======================
 # CONFIG
 # ======================
-NOM_SHEET = "Indisponibilites-enseignants"
+NOM_SHEET = "Indisponibilites-enseignants-configs"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
 ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
