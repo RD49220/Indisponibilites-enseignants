@@ -308,7 +308,7 @@ else:
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
     
-    st.text_input("Votre adresse email pour recevoir le récapitulatif :", key="email_utilisateur")
+    st.text_input("Votre adresse email pour recevoir le récapitulatif (facultatif):", key="email_utilisateur")
 
         
     # 🔄 Reset et reload créneaux depuis Google Sheet si changement utilisateur
@@ -406,12 +406,13 @@ else:
     # ======================
     # UI ajout
     # ======================
+    st.divider()
     st.subheader("🖊️ Saisir vos créneaux")
     st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
-    st.text_area("Raisons/Commentaires", key="raison_sel", height=80)
+    st.text_area("Raisons", key="raison_sel", height=80)
     st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
 
     if st.session_state._warning_doublon:
