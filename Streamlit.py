@@ -283,7 +283,7 @@ if mode == "Administrateur":
 # MODE UTILISATEUR
 # ======================
 else:
-    st.title("📅 Indisponibilités enseignants")
+    st.title("📅 Gestion des indisponibilités enseignants")
 
     # Message spécifique semestre
     if st.session_state.semestre_filter == "Impairs":
