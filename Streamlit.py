@@ -503,15 +503,16 @@ else:
 if st.button("💾 Enregistrer"):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- Suppression des anciennes lignes pour cet utilisateur ---
+    # --- Suppression des anciennes lignes pour cet utilisateur en un seul bloc ---
     try:
         all_rows = st.session_state.sheet.get_all_values()
-        rows_to_delete = [
-            i for i, r in enumerate(all_rows[1:], start=2)  # on commence à 2 pour ignorer l'en-tête
-            if r[0] == user_code
-        ]
-        for i in sorted(rows_to_delete, reverse=True):
-            st.session_state.sheet.delete_rows(i)
+        # Identifier toutes les lignes de l'utilisateur (indices Google Sheets)
+        rows_to_delete = [i for i, r in enumerate(all_rows[1:], start=2) if r[0] == user_code]
+
+        if rows_to_delete:
+            # Supprimer toutes les lignes en un seul bloc
+            st.session_state.sheet.delete_rows(rows_to_delete[0], rows_to_delete[-1])
+
     except Exception as e:
         st.error(f"⚠️ Impossible de supprimer les anciennes lignes : {e}")
         st.stop()
@@ -525,15 +526,15 @@ if st.button("💾 Enregistrer"):
         raison = p.get("raison", "")
 
         rows_to_append.append([
-            user_code,                    # Col A : code utilisateur
-            semaine,                      # Col B : semaine
-            jour,                         # Col C : jour
-            creneau,                      # Col D : créneau
-            f"{jour}_{creneau}",          # Col E : code interne (jour_creneau)
+            user_code,                              # Col A : code utilisateur
+            semaine,                                # Col B : semaine
+            jour,                                   # Col C : jour
+            creneau,                                # Col D : créneau
+            f"{jour}_{creneau}",                    # Col E : code interne (jour_creneau)
             f"{user_code}_{semaine}_{jour}_{creneau}",  # Col F : code complet
-            raison,                       # Col G : raison
-            st.session_state.commentaire, # Col H : commentaire global
-            now                           # Col I : timestamp
+            raison,                                 # Col G : raison
+            st.session_state.commentaire,           # Col H : commentaire global
+            now                                     # Col I : timestamp
         ])
 
     # --- Écriture dans Google Sheets ---
