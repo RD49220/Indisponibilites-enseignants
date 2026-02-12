@@ -447,7 +447,7 @@ else:
             h1.markdown("**Semaine**")
             h2.markdown("**Jour**")
             h3.markdown("**Créneau**")
-            h4.markdown("**Raisons/Commentaires**")
+            h4.markdown("**Raison**")
             h5.markdown("**🗑️**")
 
             # Lignes du tableau
