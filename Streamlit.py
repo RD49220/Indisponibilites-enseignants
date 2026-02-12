@@ -259,7 +259,7 @@ if mode == "Administrateur":
     st.subheader("⚠️ Supprimer toutes les indisponibilités")
     st.write("Cette action supprimera toutes les lignes de la Feuille 1 à partir de la ligne 2, mais conservera l'en-tête.")
 
-    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)"):
+    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)",key="admin_delete_all_rows"):
         try:
             # Récupération de l'en-tête (1ère ligne)
             header = st.session_state.sheet.get_all_values()[0:1]
