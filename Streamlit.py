@@ -20,6 +20,9 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Test de la connexion et des données
+all_codes = supabase.table("enseignants").select("*").execute()
+st.write("Toutes les données Supabase:", all_codes.data)
 
 
 
