@@ -359,7 +359,7 @@ else:
     # Traduction user_code → enseignant_id
     # ======================
     user_code = user_code.strip().upper()
-    resp_user = supabase.table("enseignants").select("id").eq("code", user_code).execute()
+    resp_user = supabase.table("enseignants").select("id").eq("code", user_code).limit(1).execute()
     st.write("Resp Supabase:", resp_user.data)
     enseignant_id = resp_user.data[0]["id"] if resp_user.data else None
 
