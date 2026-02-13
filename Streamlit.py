@@ -41,6 +41,8 @@ except Exception as e:
 # Test de la connexion et des données
 all_codes = supabase.table("enseignants").select("*").execute()
 st.write("Toutes les données Supabase:", all_codes.data)
+resp_user = supabase.table("enseignants").select("*").eq("code", "TA").execute()
+st.write("Test manuel TA :", resp_user.data)
 
 
 
