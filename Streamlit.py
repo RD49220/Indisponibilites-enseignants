@@ -20,6 +20,24 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+st.title("Test Supabase")
+
+try:
+    # Vérification de connexion simple
+    st.write("🔹 Connexion établie")
+
+    # Lire toutes les lignes de la table enseignants
+    resp = supabase.table("enseignants").select("*").execute()
+    st.write("Toutes les données de la table enseignants :", resp.data)
+
+    # Lire uniquement la colonne code
+    resp_codes = supabase.table("enseignants").select("code").execute()
+    st.write("Tous les codes :", resp_codes.data)
+
+except Exception as e:
+    st.error(f"Erreur : {e}")
+
 # Test de la connexion et des données
 all_codes = supabase.table("enseignants").select("*").execute()
 st.write("Toutes les données Supabase:", all_codes.data)
