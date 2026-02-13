@@ -334,6 +334,7 @@ else:
     # Traduction user_code → enseignant_id
     # ======================
     resp_user = supabase.table("enseignants").select("id").eq("code", user_code).execute()
+    st.write("Resp Supabase:", resp_user.data)
     enseignant_id = resp_user.data[0]["id"] if resp_user.data else None
 
     if enseignant_id is None:
