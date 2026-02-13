@@ -353,6 +353,8 @@ else:
     options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
+    st.write("user_code sélectionné :", repr(user_code))
+
 
     all_codes = [r['code'] for r in supabase.table("enseignants").select("code").execute().data]
     st.write("Tous les codes Supabase :", all_codes)
