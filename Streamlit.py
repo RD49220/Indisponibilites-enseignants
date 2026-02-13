@@ -10,6 +10,17 @@ from sib_api_v3_sdk import Configuration, ApiClient
 from sib_api_v3_sdk.api.transactional_emails_api import TransactionalEmailsApi
 from sib_api_v3_sdk.models import SendSmtpEmail
 
+# ======================
+# SUPABASE
+# ======================
+
+from supabase import create_client
+
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 
 # ======================
@@ -259,24 +270,33 @@ if mode == "Administrateur":
     st.subheader("⚠️ Supprimer toutes les indisponibilités")
     st.write("Cette action supprimera toutes les lignes de la Feuille 1 à partir de la ligne 2, mais conservera l'en-tête.")
 
-    if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)",key="admin_delete_all_rows"):
-        try:
+    #if st.button("❌ Supprimer toutes les lignes de la Feuille 1 (à partir de la ligne 2)",key="admin_delete_all_rows"):
+        #try:
             # Récupération de l'en-tête (1ère ligne)
-            header = st.session_state.sheet.get_all_values()[0:1]
+            #header = st.session_state.sheet.get_all_values()[0:1]
 
             # Vider entièrement la feuille
-            st.session_state.sheet.clear()
+            #st.session_state.sheet.clear()
 
             # Réécrire uniquement l'en-tête
-            if header:
-                st.session_state.sheet.append_rows(header, value_input_option="USER_ENTERED")
+            #if header:
+                #st.session_state.sheet.append_rows(header, value_input_option="USER_ENTERED")
 
             # Rafraîchir les données en mémoire
-            st.session_state.all_data = st.session_state.sheet.get_all_values()
+            #st.session_state.all_data = st.session_state.sheet.get_all_values()
 
-            st.success("✅ Toutes les lignes ont été supprimées, l'en-tête est conservé !")
+            #st.success("✅ Toutes les lignes ont été supprimées, l'en-tête est conservé !")
+        #except Exception as e:
+            #st.error(f"⚠️ Impossible de supprimer les lignes : {e}")
+    if st.button("❌ Supprimer toutes les lignes de la table datas", key="admin_delete_all_rows"):
+        try:
+            supabase.table("datas").delete().neq("id", 0).execute()
+            st.session_state.all_data = []
+            st.success("✅ Toutes les lignes ont été supprimées !")
         except Exception as e:
             st.error(f"⚠️ Impossible de supprimer les lignes : {e}")
+
+
 
 
 # ======================
@@ -310,7 +330,16 @@ else:
     options = {f"{u['code']} – {u['nom']} {u['prenom']}": u["code"] for u in users}
     label = st.selectbox("Choisissez votre nom", options.keys())
     user_code = options[label]
-    
+    # ======================
+    # Traduction user_code → enseignant_id
+    # ======================
+    resp_user = supabase.table("enseignants").select("id").eq("code", user_code).execute()
+    enseignant_id = resp_user.data[0]["id"] if resp_user.data else None
+
+    if enseignant_id is None:
+        st.error("⚠️ Enseignant introuvable dans la base")
+        st.stop()
+
     st.text_input("Votre adresse email pour recevoir le récapitulatif (facultatif):", key="email_utilisateur")
 
         
@@ -318,21 +347,24 @@ else:
     if st.session_state.selected_user != user_code:
         st.session_state.selected_user = user_code
 
-        # Rechargement depuis la feuille
-        user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
+
+        # Rechargement des créneaux depuis Supabase
+        resp_data = supabase.table("datas").select("*").eq("enseignant_id", enseignant_id).execute()
+        user_rows = resp_data.data  # liste de dicts Supabase
+
         st.session_state.ponctuels = []
         deja_vus = set()
         for r in user_rows:
-            if len(r) > 5 and r[5].endswith("_P"):
-                key = (r[1], r[2], r[3])
+            if r["code_streamlit"].endswith("_P"):
+                key = (r["semaine"], r["jour"], r["creneau_horaires"])
                 if key not in deja_vus:
                     deja_vus.add(key)
                     st.session_state.ponctuels.append({
                         "id": str(uuid.uuid4()),
-                        "semaine": r[1],
-                        "jour": r[2],
-                        "creneau": r[3],
-                        "raison": r[6] if len(r) > 6 else ""
+                        "semaine": r["semaine"],
+                        "jour": r["jour"],
+                        "creneau": r["creneau_horaires"],
+                        "raison": r.get("raisons", "")
                     })
 
         # Reset sélections
@@ -342,24 +374,58 @@ else:
         st.session_state.raison_sel = ""
         st.session_state.commentaire = ""
         if "email_utilisateur" in st.session_state:
-            del st.session_state["email_utilisateur"]
-
-
+           del st.session_state["email_utilisateur"]
 
         st.rerun()  # 🔹 Rerun pour afficher les derniers créneaux
 
+   # if st.session_state.selected_user != user_code:
+   #     st.session_state.selected_user = user_code
+
+        # Rechargement depuis la feuille
+        #resp_data = supabase.table("datas").select("*").eq("enseignant_id", enseignant_id).execute()
+        #user_rows = resp_data.data  # liste de dicts Supabase
+
+        #user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
+       # st.session_state.ponctuels = []
+        #deja_vus = set()
+        #for r in user_rows:
+           # if len(r) > 5 and r[5].endswith("_P"):
+             #   key = (r[1], r[2], r[3])
+              #  if key not in deja_vus:
+                 #   deja_vus.add(key)
+                   # st.session_state.ponctuels.append({
+                     #   "id": str(uuid.uuid4()),
+                      #  "semaine": r[1],
+                      # "jour": r[2],
+                       # "creneau": r[3],
+                       # "raison": r[6] if len(r) > 6 else ""
+                    #})
+
+       # # Reset sélections
+        #st.session_state.semaines_sel = []
+        #st.session_state.jours_sel = []
+        #st.session_state.creneaux_sel = []
+        #st.session_state.raison_sel = ""
+        #st.session_state.commentaire = ""
+        #if "email_utilisateur" in st.session_state:
+            #del st.session_state["email_utilisateur"]
+
+
+
+        #st.rerun()  # 🔹 Rerun pour afficher les derniers créneaux
+
     # Lecture des données existantes pour affichage et doublons
-    user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
-    codes_sheet = set()
-    commentaire_existant = ""
-    dernier_timestamp = None
-    for r in user_rows:
-        if len(r) > 5 and r[5].endswith("_P"):
-            codes_sheet.add(r[5])
-            commentaire_existant = r[6] if len(r) > 6 else ""
-        if len(r) > 8 and r[8]:
-            if dernier_timestamp is None or r[8] > dernier_timestamp:
-                dernier_timestamp = r[8]
+    #user_rows = [r for r in st.session_state.sheet.get_all_values()[1:] if r[0] == user_code]
+    #codes_sheet = set()
+    #commentaire_existant = ""
+    #dernier_timestamp = None
+    resp_data = supabase.table("datas").select("*").eq("enseignant_id", enseignant_id).execute()
+    user_rows = resp_data.data  # liste de dicts Supabase
+    codes_sheet = {r["code_streamlit"] for r in user_rows} if user_rows else set()
+    commentaire_existant = user_rows[-1]["commentaires_global"] if user_rows else ""
+    dernier_timestamp = user_rows[-1].get("timestamp") if user_rows else None
+
+
 
     if codes_sheet:
         msg = (
@@ -483,73 +549,58 @@ else:
 
     st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
 
-# ======================
-# Enregistrement final + envoi email
-# ======================
-if st.button("💾 Enregistrer"):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # ======================
+    # Enregistrement final + envoi email
+    # ======================
+    if st.button("💾 Enregistrer"):
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- Suppression des anciennes lignes pour cet utilisateur en un seul bloc ---
-    try:
-        all_rows = st.session_state.sheet.get_all_values()
-        # Identifier toutes les lignes de l'utilisateur (indices Google Sheets)
-        rows_to_delete = [i for i, r in enumerate(all_rows[1:], start=2) if r[0] == user_code]
-
-        if rows_to_delete:
-            # Supprimer toutes les lignes en un seul bloc
-            st.session_state.sheet.delete_rows(rows_to_delete[0], rows_to_delete[-1])
-
-    except Exception as e:
-        st.error(f"⚠️ Impossible de supprimer les anciennes lignes : {e}")
-        st.stop()
-
-    # --- Préparation des nouvelles lignes à ajouter depuis st.session_state.ponctuels ---
-    rows_to_append = []
-    for p in st.session_state.ponctuels:
-        semaine = p.get("semaine", "")
-        jour = p.get("jour", "")
-        creneau = p.get("creneau", "")
-        raison = p.get("raison", "")
-
-        rows_to_append.append([
-            user_code,                              # Col A : code utilisateur
-            semaine,                                # Col B : semaine
-            jour,                                   # Col C : jour
-            creneau,                                # Col D : créneau
-            f"{jour}_{creneau}",                    # Col E : code interne (jour_creneau)
-            f"{user_code}_{semaine}_{jour}_{creneau}_P",  # Col F : code streamlit complet garder _P a la fin pour la détéction 
-            raison,                                 # Col G : raison
-            st.session_state.commentaire,           # Col H : commentaire global
-            now                                     # Col I : timestamp
-        ])
-
-    # --- Écriture dans Google Sheets ---
-    if rows_to_append:
+        # --- Suppression des anciennes lignes pour cet utilisateur ---
         try:
-            st.session_state.sheet.append_rows(
-                rows_to_append,
-                value_input_option="USER_ENTERED"
-            )
-            st.success("✅ Indisponibilités enregistrées")
+            supabase.table("datas").delete().eq("enseignant_id", enseignant_id).execute()
         except Exception as e:
-            st.error(f"❌ Erreur lors de l'écriture : {e}")
-    else:
-        st.info("ℹ️ Aucun créneau à enregistrer")
+            st.error(f"⚠️ Impossible de supprimer les anciennes lignes : {e}")
+            st.stop()
 
-    # ======================
-    # Envoi email Brevo
-    # ======================
-    destinataire = st.session_state.email_utilisateur
-    if destinataire:
-        sujet = f"Récapitulatif des indisponibilités - {now}"
-        contenu = generer_contenu_email(
-            user_code,
-            st.session_state.ponctuels,
-            st.session_state.commentaire,
-            now
-        )
-        success, msg = envoyer_email(destinataire, sujet, contenu)
-        if success:
-            st.success(f"✅ Email envoyé à {destinataire}")
-        else:
-            st.error(f"❌ Erreur envoi mail : {msg}")
+        # --- Insertion des nouvelles lignes depuis st.session_state.ponctuels ---
+        for p in st.session_state.ponctuels:
+            semaine = p.get("semaine", "")
+            jour = p.get("jour", "")
+            creneau = p.get("creneau", "")
+            raison = p.get("raison", "")
+
+            try:
+                supabase.table("datas").insert({
+                    "enseignant_id": enseignant_id,
+                    "semaine": int(semaine),
+                    "jour": jour,
+                    "creneau_horaires": creneau,
+                    "code_creneau": f"{jour}_{creneau}",
+                    "code_streamlit": f"{user_code}_{semaine}_{jour}_{creneau}_P",
+                    "raisons": raison,
+                    "commentaires_global": st.session_state.commentaire
+                }).execute()
+            except Exception as e:
+               st.error(f"❌ Erreur lors de l'insertion : {e}")
+               st.stop()
+
+        st.success("✅ Indisponibilités enregistrées dans la base Supabase")
+
+        # ======================
+        # Envoi email Brevo
+        # ======================
+        destinataire = st.session_state.email_utilisateur
+        if destinataire:
+            sujet = f"Récapitulatif des indisponibilités - {now}"
+            contenu = generer_contenu_email(
+                user_code,
+                st.session_state.ponctuels,
+                st.session_state.commentaire,
+                now
+            )
+            success, msg = envoyer_email(destinataire, sujet, contenu)
+            if success:
+                st.success(f"✅ Email envoyé à {destinataire}")
+            else:
+                st.error(f"❌ Erreur envoi mail : {msg}")
+
