@@ -548,16 +548,17 @@ else:
         supabase.table("datas").delete().eq("enseignant_id", enseignant_id).execute()
 
         for p in st.session_state.ponctuels:
-		     st.write("Donnée envoyée :", {
-              "enseignant_id": enseignant_id,
-              "semaine": p.get("semaine"),
-              "jour": p.get("jour"),
-              "creneau_horaires": p.get("creneau"),
-              "code_creneau": f"{p.get('jour','')}_{p.get('creneau','')}",
-              "code_streamlit": f"{user_code}_{p.get('semaine','')}_{p.get('jour','')}_{p.get('creneau','')}_P",
-              "raisons": p.get("raison", ""),
-              "commentaires_global": st.session_state.commentaire
+            st.write("Donnée envoyée :", {
+                "enseignant_id": enseignant_id,
+                "semaine": p.get("semaine"),
+                "jour": p.get("jour"),
+                "creneau_horaires": p.get("creneau"),
+                "code_creneau": f"{p.get('jour','')}_{p.get('creneau','')}",
+                "code_streamlit": f"{user_code}_{p.get('semaine','')}_{p.get('jour','')}_{p.get('creneau','')}_P",
+                "raisons": p.get("raison", ""),
+                "commentaires_global": st.session_state.commentaire
             })
+
 
             supabase.table("datas").insert({
                 "enseignant_id": enseignant_id,
