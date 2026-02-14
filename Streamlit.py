@@ -391,11 +391,15 @@ else:
 
 
         # reset UI
-        st.session_state.semaines_sel = []
-        st.session_state.jours_sel = []
-        st.session_state.creneaux_sel = []
-        st.session_state.raison_sel = ""
-        st.session_state.commentaire = ""
+        #st.session_state.semaines_sel = []
+        #st.session_state.jours_sel = []
+        #st.session_state.creneaux_sel = []
+        #st.session_state.raison_sel = ""
+        #st.session_state.commentaire = ""
+        for k in ["semaines_sel","jours_sel","creneaux_sel","raison_sel","commentaire"]:
+            if k in st.session_state:
+                del st.session_state[k]
+
         if "email_utilisateur" in st.session_state:
             del st.session_state["email_utilisateur"]
 
