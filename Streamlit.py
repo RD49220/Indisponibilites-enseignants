@@ -380,13 +380,13 @@ else:
 				key = (semaine, jour, creneau)
 
 				if key not in deja_vus:
-				deja_vus.add(key)
-				st.session_state.ponctuels.append({
-					"id": str(uuid.uuid4()),
-					"semaine": semaine,
-					"jour": jour,
-					"creneau": creneau,
-					"raison": r.get("raisons", "")
+				    deja_vus.add(key)
+				    st.session_state.ponctuels.append({
+					    "id": str(uuid.uuid4()),
+					    "semaine": semaine,
+					    "jour": jour,
+					    "creneau": creneau,
+					    "raison": r.get("raisons", "")
                 })
 
 
