@@ -380,7 +380,7 @@ else:
                         "id": str(uuid.uuid4()),
                         "semaine": r["semaine"],
                         "jour": r["jour"],
-                        "creneau": r["creneau_horaires"],
+                        "creneau": r["creneau"],
                         "raison": r.get("raisons", "")
                     })
 
