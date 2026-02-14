@@ -373,7 +373,7 @@ else:
 
         for r in user_rows:
             if r["code_streamlit"].endswith("_P"):
-                key = (r["semaine"], r["jour"], r["creneau_horaires"])
+                key = (r["semaine"], r["jour"], r["creneau"])
                 if key not in deja_vus:
                     deja_vus.add(key)
                     st.session_state.ponctuels.append({
