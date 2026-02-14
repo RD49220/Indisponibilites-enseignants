@@ -21,31 +21,6 @@ SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-st.title("Test Supabase")
-
-try:
-    # Vérification de connexion simple
-    st.write("🔹 Connexion établie")
-
-    # Lire toutes les lignes de la table enseignants
-    resp = supabase.table("enseignants").select("*").execute()
-    st.write("Toutes les données de la table enseignants :", resp.data)
-
-    # Lire uniquement la colonne code
-    resp_codes = supabase.table("enseignants").select("code").execute()
-    st.write("Tous les codes :", resp_codes.data)
-
-except Exception as e:
-    st.error(f"Erreur : {e}")
-
-# Test de la connexion et des données
-all_codes = supabase.table("enseignants").select("*").execute()
-st.write("Toutes les données Supabase:", all_codes.data)
-resp_user = supabase.table("enseignants").select("*").eq("code", "TA").execute()
-st.write("Test manuel TA :", resp_user.data)
-
-
-
 # ======================
 # CONFIG
 # ======================
@@ -548,18 +523,6 @@ else:
         supabase.table("datas").delete().eq("enseignant_id", enseignant_id).execute()
 
         for p in st.session_state.ponctuels:
-            st.write("Donnée envoyée :", {
-                "enseignant_id": enseignant_id,
-                "semaine": p.get("semaine"),
-                "jour": p.get("jour"),
-                "creneau": p.get("creneau"),
-                "code_creneau": f"{p.get('jour','')}_{p.get('creneau','')}",
-                "code_streamlit": f"{user_code}_{p.get('semaine','')}_{p.get('jour','')}_{p.get('creneau','')}_P",
-                "raisons": p.get("raison", ""),
-                "commentaires_global": st.session_state.commentaire
-            })
-
-
             supabase.table("datas").insert({
                 "enseignant_id": enseignant_id,
                 "semaine": int(p.get("semaine", 0)),
