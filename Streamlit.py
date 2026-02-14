@@ -373,21 +373,21 @@ else:
 
         for r in user_rows:
             if r.get("code_streamlit", "").endswith("_P"):
-				semaine = str(r.get("semaine", ""))
-				jour = r.get("jour", "")
-				creneau = r.get("creneau", "")
+                semaine = str(r.get("semaine", ""))
+                jour = r.get("jour", "")
+                creneau = r.get("creneau", "")
 
-				key = (semaine, jour, creneau)
+                key = (semaine, jour, creneau)
 
-				if key not in deja_vus:
-				    deja_vus.add(key)
-				    st.session_state.ponctuels.append({
-					    "id": str(uuid.uuid4()),
-					    "semaine": semaine,
-					    "jour": jour,
-					    "creneau": creneau,
-					    "raison": r.get("raisons", "")
-                })
+                if key not in deja_vus:
+                    deja_vus.add(key)
+                    st.session_state.ponctuels.append({
+                        "id": str(uuid.uuid4()),
+                        "semaine": semaine,
+                        "jour": jour,
+                        "creneau": creneau,
+                        "raison": r.get("raisons", "")
+                    })
 
 
         # reset UI
