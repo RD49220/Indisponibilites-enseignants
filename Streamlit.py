@@ -467,7 +467,7 @@ else:
     jours_selection =st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
     creneaux_selection =st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
-    st.text_area("Raisons", key="raison_sel", height=80)
+    raison =st.text_area("Raisons", key="raison_sel", height=80)
     #st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
     if st.button("➕ Ajouter"):
         ajouter_creneaux(codes_sheet, user_code) 
@@ -520,7 +520,7 @@ else:
     # Commentaire global (INCHANGÉ)
     # ======================
     commentaire_value = st.session_state.get("commentaire", commentaire_existant)
-    st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
+    commentaire_global =st.text_area("💬 Commentaire global", value=commentaire_value, key="commentaire")
 
     # ======================
     # Enregistrement (INCHANGÉ)
