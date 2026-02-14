@@ -372,7 +372,7 @@ else:
         deja_vus = set()
 
         for r in user_rows:
-			if r.get("code_streamlit", "").endswith("_P"):
+            if r.get("code_streamlit", "").endswith("_P"):
 				semaine = str(r.get("semaine", ""))
 				jour = r.get("jour", "")
 				creneau = r.get("creneau", "")
