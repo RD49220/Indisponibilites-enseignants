@@ -455,10 +455,14 @@ else:
                             "raison": raison_texte
                         })
 
-        st.session_state.semaines_sel = []
-        st.session_state.jours_sel = []
-        st.session_state.creneaux_sel = []
-        st.session_state.raison_sel = ""
+        #st.session_state.semaines_sel = []
+        #st.session_state.jours_sel = []
+        #st.session_state.creneaux_sel = []
+        #st.session_state.raison_sel = ""
+        for k in ["semaines_sel", "jours_sel", "creneaux_sel", "raison_sel"]:
+            if k in st.session_state:
+                del st.session_state[k]
+
         st.session_state._warning_doublon = doublon
 
     # ======================
