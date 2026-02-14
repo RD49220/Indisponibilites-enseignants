@@ -463,12 +463,14 @@ else:
     st.divider()
     st.subheader("🖊️ Saisir vos créneaux")
 
-    st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
-    st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
-    st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
+    semaines_selection =st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
+    jours_selection =st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
+    creneaux_selection =st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
     st.text_area("Raisons", key="raison_sel", height=80)
-    st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
+    #st.button("➕ Ajouter", on_click=ajouter_creneaux, args=(codes_sheet, user_code))
+    if st.button("➕ Ajouter"):
+        ajouter_creneaux(codes_sheet, user_code) 
 
     if st.session_state._warning_doublon:
         st.warning("⚠️ Certains créneaux existaient déjà et n'ont pas été ajoutés.")
