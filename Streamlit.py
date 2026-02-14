@@ -413,6 +413,9 @@ else:
     codes_sheet = {r["code_streamlit"] for r in user_rows} if user_rows else set()
     commentaire_existant = user_rows[-1]["commentaires_global"] if user_rows else ""
     dernier_timestamp = user_rows[-1].get("timestamp") if user_rows else None
+    if dernier_timestamp:
+        dernier_timestamp = str(dernier_timestamp)[:19]  # garde YYYY-MM-DDTHH:MM:SS
+
 
     if codes_sheet:
         msg = (
