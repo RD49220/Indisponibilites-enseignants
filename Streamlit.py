@@ -109,7 +109,7 @@ if "semestre_filter" not in st.session_state:
 # CHARGEMENT DES DONNÉES EN SESSION
 # ======================
 if "creneaux_data" not in st.session_state:
-    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:7]
+    st.session_state.creneaux_data = st.session_state.creneaux_sheet.get_all_values()[1:]
 if "jours_data" not in st.session_state:
     st.session_state.jours_data = st.session_state.jours_sheet.get_all_values()[1:]
 if "semaines_data" not in st.session_state:
