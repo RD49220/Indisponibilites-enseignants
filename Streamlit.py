@@ -476,6 +476,11 @@ else:
 
     semaines_selection =st.multiselect("Semaine(s)", [r[0] for r in filtered_semaines], key="semaines_sel")
     jours_selection =st.multiselect("Jour(s)", [r[0] for r in st.session_state.jours_data], key="jours_sel")
+
+    #creneaux_visibles = st.session_state.creneaux_data[:6]
+    #creneaux_labels = [r[0] for r in creneaux_visibles]
+    #creneaux_selection = st.multiselect("Créneau(x)",creneaux_labels,key="creneaux_sel")
+
     creneaux_selection =st.multiselect("Créneau(x)", [r[0] for r in st.session_state.creneaux_data], key="creneaux_sel")
 
     raison =st.text_area("Raisons", key="raison_sel", height=80)
