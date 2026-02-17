@@ -27,7 +27,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 NOM_SHEET = "Indisponibilites-enseignants-configs"
 ONGLET_DONNEES = "Feuille 1"
 ONGLET_USERS = "Utilisateurs"
-ADMIN_PASSWORD = st.secrets.get("admin_password", "monmotdepasse")  # 🔑 mot de passe admin
+ADMIN_IASSWORD = st.secrets.get("admin_Iassword", "monmotdepasse")  # 🔑 mot de passe admin
 
 # ======================
 # CONFIGURATION BREVO
@@ -53,10 +53,10 @@ def envoyer_email(destinataire, sujet, contenu):
 # ======================
 # DEBUG SECRET
 # ======================
-#if "admin_password" in st.secrets:
-#    st.success("✅ Secret admin_password détecté")
+#if "admin_Iassword" in st.secrets:
+#    st.success("✅ Secret admin_Iassword détecté")
 #else:
-#    st.error("❌ Secret admin_password INTROUVABLE")
+#    st.error("❌ Secret admin_Iassword INTROUVABLE")
 
 # ======================
 # AUTH GOOGLE
@@ -237,7 +237,7 @@ mode = st.radio("Mode", ["Utilisateur", "Administrateur"])
 if mode == "Administrateur":
     # 🔑 Vérification mot de passe
     pwd_input = st.text_input("Entrez le mot de passe administrateur :", type="password")
-    if pwd_input != ADMIN_PASSWORD:
+    if pwd_input != ADMIN_IASSWORD:
         st.error("❌ Mot de passe incorrect. Accès refusé.")
         st.stop()
 
@@ -372,7 +372,7 @@ else:
         deja_vus = set()
 
         for r in user_rows:
-            if r.get("code_streamlit", "").endswith("_P"):
+            if r.get("code_streamlit", "").endswith("_I"):
                 semaine = str(r.get("semaine", ""))
                 jour = r.get("jour", "")
                 creneau = r.get("creneau", "")
@@ -439,7 +439,7 @@ else:
         for s in semaines_sel:
             for j_code in jours_codes:
                 for num in creneaux_nums:
-                    code = f"{user_code}_{j_code}_{num}_P"
+                    code = f"{user_code}_{j_code}_{num}_I"
 
                     existe_streamlit = any(
                         p["semaine"] == s and p["jour"] == j_code and p["creneau"] == num
@@ -553,7 +553,7 @@ else:
                 "jour": p.get("jour", ""),
                 "creneau": p.get("creneau", ""),
                 "code_creneau": f"{p.get('jour','')}_{p.get('creneau','')}",
-                "code_streamlit": f"{user_code}_{p.get('semaine','')}_{p.get('jour','')}_{p.get('creneau','')}_P",
+                "code_streamlit": f"{user_code}_{p.get('semaine','')}_{p.get('jour','')}_{p.get('creneau','')}_I",
                 "raisons": p.get("raison", ""),
                 "commentaires_global": st.session_state.commentaire
             }).execute()
